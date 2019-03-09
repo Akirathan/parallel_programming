@@ -2,3 +2,5 @@
 *.idea/
 *cmake-build-debug/
 
+k_means/data/
+
