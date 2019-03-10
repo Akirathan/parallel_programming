@@ -4,7 +4,7 @@
 int main()
 {
     const size_t iters = 3;
-    const size_t k = 3;
+    const size_t k = 2;
 
     point_t a{1, 2};
     point_t b{3, 4};
@@ -16,5 +16,6 @@ int main()
     std::vector<uint8_t> assignments;
     KMeans kMeans;
 
+    kMeans.init(points.size(), k, iters);
     kMeans.compute(points, k, iters, centroids, assignments);
 }
