@@ -23,3 +23,6 @@ set(CMAKE_EXE_LINKER_FLAGS "-Wl,-rpath /usr/local/lib")
 target_link_libraries(k_means
         tbb
         tbbmalloc)
+
+######## SERIAL #######
+add_subdirectory(serial)
