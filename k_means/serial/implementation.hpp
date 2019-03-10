@@ -7,7 +7,7 @@
 
 
 template<typename POINT = point_t, typename ASGN = std::uint8_t, bool DEBUG = false>
-class KMeans : public IKMeans<POINT, ASGN, DEBUG>
+class SerialKMeans : public IKMeans<POINT, ASGN, DEBUG>
 {
 private:
 	typedef typename POINT::coord_t coord_t;
