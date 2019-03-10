@@ -89,24 +89,17 @@ public:
 	    // Parallel for - assign all points. ////
 	    // Construct range from points
 		PointRange pointRange(points);
-		tbb::parallel_for(pointRange, PointsAssignmentBody());
+		tbb::parallel_for(pointRange, [&](const PointRange &range){pointsAssignment(range);});
+		std::cout << std::endl;
 	}
 
 private:
 	using coord_t = typename POINT::coord_t;
 
-	class PointsAssignmentBody {
-	public:
-		void operator()(PointRange &range) const
-		{
-			// Print points for now.
-			std::cout << "Points: " << std::endl;
-			for (point_t point : range.get_points()) {
-				std::cout << "\tx=" << point.x << " y=" << point.y << std::endl;
-			}
-		}
-	};
+	void pointsAssignment(const PointRange &range)
+	{
 
+	}
 
 	static coord_t distance(const POINT &point, const POINT &centroid)
 	{
