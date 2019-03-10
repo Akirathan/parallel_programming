@@ -69,6 +69,8 @@ public:
 	 */
 	virtual void init(std::size_t points, std::size_t k, std::size_t iters)
 	{
+		this->k = k;
+		this->iters = iters;
 		sums.resize(k);
 		counts.resize(k);
 	}
@@ -88,51 +90,62 @@ public:
 	virtual void compute(const std::vector<POINT> &points, std::size_t k, std::size_t iters,
 		std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
-		initCentroids(centroids, points, k);
-		initAssignments(assignments, points);
+		this->points = &points;
 
-	    // Parallel for - assign all points. ////
-	    // Construct range from points
-	    std::vector<std::pair<POINT, size_t>> pointIdxVector;
-	    createPointIdxPairVector(pointIdxVector, points);
-		PointRange pointRange(pointIdxVector);
+		initCentroids(centroids);
+		initAssignments(assignments);
 
-		tbb::parallel_for(pointRange, [&](const PointRange &range) {
-			computePointsAssignment(range, centroids, assignments);
-		});
+		while (iters > 0) {
+		    iters--;
+			// Parallel for - assign all points. ////
+			// Construct range from points
+			std::vector<std::pair<POINT, size_t>> pointIdxVector;
+			createPointIdxPairVector(pointIdxVector);
+			PointRange pointRange(pointIdxVector);
+
+			tbb::parallel_for(pointRange, [&](const PointRange &range) {
+				computePointsAssignment(range, centroids, assignments);
+			});
+		}
 		std::cout << std::endl;
 	}
 
 private:
 	using coord_t = typename POINT::coord_t;
+	size_t k;
+	size_t iters;
+	const std::vector<POINT> *points;
 	std::vector<POINT> sums;
 	std::vector<size_t> counts;
 
-	void createPointIdxPairVector(std::vector<std::pair<POINT, size_t>> &vec, const std::vector<POINT> &points)
+	void createPointIdxPairVector(std::vector<std::pair<POINT, size_t>> &vec)
 	{
-		for (size_t i = 0; i < points.size(); i++) {
-			vec.push_back(std::make_pair(points[i], i));
+		assert(points);
+		for (size_t i = 0; i < points->size(); i++) {
+			vec.push_back(std::make_pair((*points)[i], i));
 		}
 	}
 
-	void initCentroids(std::vector<POINT> &centroids, const std::vector<POINT> &points, size_t k)
+	void initCentroids(std::vector<POINT> &centroids)
 	{
 		assert(k > 0 && k < 256);
+		assert(points);
 
 		centroids.resize(k);
 		for (size_t i = 0; i < k; i++) {
-			centroids[i] = points[i];
+			centroids[i] = (*points)[i];
 		}
 	}
 
-	void initAssignments(std::vector<ASGN> &assignments, const std::vector<POINT> &points)
+	void initAssignments(std::vector<ASGN> &assignments)
 	{
-		assignments.resize(points.size());
+	    assert(points);
+		assignments.resize(points->size());
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
 	void computePointsAssignment(const PointRange &range, const std::vector<POINT> &centroids,
-								 std::vector<ASGN> &assignments)
+			std::vector<ASGN> &assignments)
 	{
 		for (size_t i = 0; i < range.get_points().size(); i++) {
 			point_t point = range.get_points()[i].first;
