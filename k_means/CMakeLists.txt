@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(k_means)
 
+
 set(TBB_ROOT_DIR tbb)
 set(FRAMEWORK_DIR framework)
 
@@ -26,3 +27,8 @@ target_link_libraries(k_means
 
 ######## SERIAL #######
 add_subdirectory(serial)
+
+
+####### Testing part ######
+add_subdirectory(tests)
+
