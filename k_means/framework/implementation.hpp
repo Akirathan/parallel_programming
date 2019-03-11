@@ -19,7 +19,7 @@ template<typename T>
 void half_split_vector(std::vector<T> &sourceVector, std::vector<T> &destVector)
 {
 	auto beginIt = sourceVector.begin();
-	auto middleIt = beginIt - sourceVector.size()/2;
+	auto middleIt = beginIt + sourceVector.size()/2;
 	auto endIt = sourceVector.end();
 
 	destVector.insert(destVector.begin(), middleIt, endIt);
