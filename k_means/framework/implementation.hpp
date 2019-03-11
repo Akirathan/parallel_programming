@@ -72,9 +72,12 @@ struct Cluster {
 template<typename POINT=point_t>
 class ClusterRange {
 public:
-	ClusterRange(const std::vector<Cluster<POINT>> &clusters)
-		: clusters(clusters)
-	{}
+	ClusterRange(std::vector<Cluster<POINT>> &clusters)
+	{
+		for (auto &cluster : clusters) {
+			this->clusters.emplace_back(&cluster);
+		}
+	}
 
 	ClusterRange(ClusterRange &other, tbb::split)
 	{
@@ -82,10 +85,15 @@ public:
 		half_split_vector(other.clusters, clusters);
 	}
 
-	std::vector<Cluster<POINT>> & get_clusters()
+	std::vector<Cluster<POINT> *> & get_clusters()
 	{
 		return clusters;
 	}
+
+    const std::vector<Cluster<POINT> *> & get_clusters() const
+    {
+        return clusters;
+    }
 
 	bool is_divisible() const
 	{
@@ -99,7 +107,7 @@ public:
 
 private:
 	const size_t minRange = 2;
-	std::vector<Cluster<POINT>> clusters;
+	std::vector<Cluster<POINT> *> clusters;
 };
 
 
@@ -239,12 +247,12 @@ private:
 		ClusterRange<POINT> clusterRange(clusters);
 		tbb::parallel_for(clusterRange, [&](const ClusterRange<POINT> &range)
 		{
-			for (auto &cluster : range.get_clusters()) {
-				if (cluster.count == 0) {
+			for (Cluster<POINT> *cluster : range.get_clusters()) {
+				if (cluster->count == 0) {
 					continue; // If the cluster is empty, keep its previous centroid.
 				}
-				cluster.centroid.x = cluster.sum.x / (std::int16_t)cluster.count;
-				cluster.centroid.y = cluster.sum.y / (std::int16_t)cluster.count;
+				cluster->centroid.x = cluster->sum.x / (std::int16_t)cluster->count;
+				cluster->centroid.y = cluster->sum.y / (std::int16_t)cluster->count;
 			}
 		});
 	}
