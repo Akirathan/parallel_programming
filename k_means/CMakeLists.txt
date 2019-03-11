@@ -16,6 +16,7 @@ include_directories(${FRAMEWORK_DIR}/internal)
 set(SOURCES
         #${FRAMEWORK_DIR}/k-means.cpp
         ${FRAMEWORK_DIR}/test.cpp
+        ${FRAMEWORK_DIR}/implementation.hpp
         )
 
 add_executable(k_means ${SOURCES})
