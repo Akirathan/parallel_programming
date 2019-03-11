@@ -233,7 +233,7 @@ private:
 				size_t pointIdx = item.second;
 
 				Cluster<POINT> &nearestCluster = getNearestCluster(point);
-				assignments[pointIdx] = static_cast<ASGN>(nearestCluster.index);
+				assignPointIdxToCluster(pointIdx, nearestCluster);
 
 				nearestCluster.sum.x += point.x;
 				nearestCluster.sum.y += point.y;
@@ -278,6 +278,11 @@ private:
 		std::int64_t dy = (std::int64_t)point.y - (std::int64_t)centroid.y;
 		// We do not have to count sqrt here.
 		return (coord_t)(dx*dx + dy*dy);
+	}
+
+	void assignPointIdxToCluster(const size_t pointIdx, Cluster<POINT> &cluster)
+	{
+		(*assignments)[pointIdx] = static_cast<ASGN>(cluster.index);
 	}
 };
 
