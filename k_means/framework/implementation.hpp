@@ -146,6 +146,8 @@ public:
 			computePointsAssignment(assignments);
 			computeNewCentroids();
 		}
+
+		constructOutput(centroids, assignments);
 		std::cout << std::endl;
 	}
 
@@ -201,6 +203,11 @@ private:
 	{
 	    assert(points);
 		assignments.resize(points->size());
+	}
+
+	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
+	{
+		// TODO
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
