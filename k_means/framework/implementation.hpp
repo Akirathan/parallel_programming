@@ -149,6 +149,7 @@ public:
 
 		initClusters();
 		initAssignments();
+		initCentroids(centroids);
 
 		while (iters > 0) {
 		    iters--;
@@ -180,17 +181,6 @@ private:
 		return vec;
 	}
 
-	void initCentroids(std::vector<POINT> &centroids)
-	{
-		assert(k > 0 && k < 256);
-		assert(points);
-
-		centroids.resize(k);
-		for (size_t i = 0; i < k; i++) {
-			centroids[i] = (*points)[i];
-		}
-	}
-
 	void initClusters()
 	{
 		assert(points);
@@ -217,11 +207,20 @@ private:
 	    assert(assignments);
 		assignments->resize(points->size());
 	}
+
+	void initCentroids(std::vector<POINT> &centroids)
+	{
+		centroids.resize(k);
 	}
 
 	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
 		assignments = std::move(*this->assignments);
+
+		for (size_t i = 0; i < clusters.size(); i++) {
+			centroids[i].x = clusters[i].centroid.x;
+			centroids[i].y = clusters[i].centroid.y;
+		}
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
