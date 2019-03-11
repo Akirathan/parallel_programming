@@ -9,17 +9,23 @@
 #include <interface.hpp>
 #include <exception.hpp>
 
+/**
+ *
+ * @tparam T
+ * @param sourceVector The second half of this vector will be moved to destVector
+ * @param destVector
+ */
 template<typename T>
-static std::pair<std::vector<T>, std::vector<T>> half_split_vector(const std::vector<T> &full)
+void half_split_vector(std::vector<T> &sourceVector, std::vector<T> &destVector)
 {
-	auto beginIt = full.begin();
-	auto endIt = full.end();
-	auto middleIt = endIt - full.size()/2;
+	auto beginIt = sourceVector.begin();
+	auto middleIt = beginIt - sourceVector.size()/2;
+	auto endIt = sourceVector.end();
 
-	std::vector<T> firstHalf(beginIt, middleIt);
-	std::vector<T> secondHalf(middleIt, endIt);
-	return std::make_pair(firstHalf, secondHalf);
+	destVector.insert(destVector.begin(), middleIt, endIt);
+	sourceVector.erase(middleIt, endIt);
 }
+
 
 class PointRange {
 public:
@@ -30,7 +36,8 @@ public:
 
 	PointRange(PointRange &otherRange, tbb::split)
 	{
-		half_split(otherRange);
+		assert(points.empty());
+		half_split_vector(otherRange.points, points);
 	}
 
 	const std::vector<std::pair<point_t, size_t>> & get_points() const
@@ -51,19 +58,6 @@ public:
 private:
 	static const size_t minRange = 2;
 	std::vector<std::pair<point_t, size_t>> points;
-
-	void half_split(PointRange &otherRange)
-	{
-		auto &otherPoints = otherRange.points;
-		auto firstHalf = half_split_vector(otherPoints).first;
-		auto secondHalf = half_split_vector(otherPoints).second;
-
-		assert(points.empty());
-		points.insert(points.begin(), firstHalf.begin(), firstHalf.end());
-
-		otherPoints.clear();
-		otherPoints.insert(otherPoints.begin(), secondHalf.begin(), secondHalf.end());
-	}
 };
 
 
