@@ -56,6 +56,14 @@ private:
 	}
 };
 
+template<typename POINT=point_t>
+struct Cluster {
+	size_t index;
+	size_t count;
+	POINT sum;
+	POINT centroid;
+};
+
 
 template<typename POINT = point_t, typename ASGN = std::uint8_t, bool DEBUG = false>
 class KMeans : public IKMeans<POINT, ASGN, DEBUG>
@@ -92,7 +100,7 @@ public:
 	{
 		this->points = &points;
 
-		initCentroids(centroids);
+		initClusters();
 		initAssignments(assignments);
 
 		while (iters > 0) {
@@ -117,6 +125,7 @@ private:
 	const std::vector<POINT> *points;
 	std::vector<POINT> sums;
 	std::vector<size_t> counts;
+	std::vector<Cluster<POINT>> clusters;
 
 	void createPointIdxPairVector(std::vector<std::pair<POINT, size_t>> &vec)
 	{
@@ -137,6 +146,26 @@ private:
 		}
 	}
 
+	void initClusters()
+	{
+		assert(points);
+
+		clusters.resize(k);
+
+		for (size_t i = 0; i < k; i++) {
+			POINT point = (*points)[i];
+
+			Cluster<POINT> cluster;
+			cluster.index = i;
+			cluster.count = 1;
+			cluster.sum.x = point.x;
+			cluster.sum.y = point.y;
+			cluster.centroid = point;
+
+			clusters.emplace_back(std::move(cluster));
+		}
+	}
+
 	void initAssignments(std::vector<ASGN> &assignments)
 	{
 	    assert(points);
@@ -151,23 +180,26 @@ private:
 			point_t point = range.get_points()[i].first;
 			size_t pointIdx = range.get_points()[i].second;
 
-			size_t nearest = getNearestCluster(point, centroids);
-			assignments[pointIdx] = static_cast<ASGN>(nearest);
-			sums[nearest].x += point.x;
-			sums[nearest].y += point.y;
-			++counts[nearest];
+			Cluster<POINT> &nearestCluster = getNearestCluster(point);
+			assignments[pointIdx] = static_cast<ASGN>(nearestCluster.index);
+
+			nearestCluster.sum.x += point.x;
+			nearestCluster.sum.y += point.y;
+			nearestCluster.count++;
+		}
+	}
 		}
 	}
 
-	static std::size_t getNearestCluster(const POINT &point, const std::vector<POINT> &centroids)
+	Cluster<POINT> & getNearestCluster(const POINT &point)
 	{
-		coord_t minDist = distance(point, centroids[0]);
-		std::size_t nearest = 0;
-		for (std::size_t i = 1; i < centroids.size(); ++i) {
-			coord_t dist = distance(point, centroids[i]);
+		coord_t minDist = distance(point, clusters[0].centroid);
+		Cluster<POINT> &nearest = clusters[0];
+		for (std::size_t i = 1; i < clusters.size(); ++i) {
+			coord_t dist = distance(point, clusters[i].centroid);
 			if (dist < minDist) {
 				minDist = dist;
-				nearest = i;
+				nearest = clusters[i];
 			}
 		}
 
