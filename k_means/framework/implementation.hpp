@@ -160,12 +160,14 @@ private:
 	std::vector<size_t> counts;
 	std::vector<Cluster<POINT>> clusters;
 
-	void createPointIdxPairVector(std::vector<std::pair<POINT, size_t>> &vec)
+	std::vector<std::pair<POINT, size_t>> createPointIdxPairVector()
 	{
 		assert(points);
+		std::vector<std::pair<POINT, size_t>> vec;
 		for (size_t i = 0; i < points->size(); i++) {
 			vec.push_back(std::make_pair((*points)[i], i));
 		}
+		return vec;
 	}
 
 	void initCentroids(std::vector<POINT> &centroids)
@@ -213,8 +215,7 @@ private:
 	// First part of the algorithm -- assign all the points to nearest cluster.
 	void computePointsAssignment(std::vector<ASGN> &assignments)
 	{
-		std::vector<std::pair<POINT, size_t>> pointIdxVector;
-		createPointIdxPairVector(pointIdxVector);
+		std::vector<std::pair<POINT, size_t>> pointIdxVector = createPointIdxPairVector();
 		PointRange pointRange(pointIdxVector);
 
 		tbb::parallel_for(pointRange, [&](const PointRange &range)
