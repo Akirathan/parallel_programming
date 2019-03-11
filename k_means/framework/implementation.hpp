@@ -9,6 +9,18 @@
 #include <interface.hpp>
 #include <exception.hpp>
 
+template<typename T>
+static std::pair<std::vector<T>, std::vector<T>> half_split_vector(const std::vector<T> &full)
+{
+	auto beginIt = full.begin();
+	auto endIt = full.end();
+	auto middleIt = endIt - full.size()/2;
+
+	std::vector<T> firstHalf(beginIt, middleIt);
+	std::vector<T> secondHalf(middleIt, endIt);
+	return std::make_pair(firstHalf, secondHalf);
+}
+
 class PointRange {
 public:
 	PointRange(const std::vector<std::pair<point_t, size_t>> &points)
@@ -42,19 +54,18 @@ private:
 
 	void half_split(PointRange &otherRange)
 	{
-		std::vector<std::pair<point_t, size_t>> tmpPoints = otherRange.points;
-		auto beginIt = tmpPoints.begin();
-		auto endIt = tmpPoints.end();
-		auto halfIt = endIt - tmpPoints.size()/2;
+		auto &otherPoints = otherRange.points;
+		auto firstHalf = half_split_vector(otherPoints).first;
+		auto secondHalf = half_split_vector(otherPoints).second;
 
 		assert(points.empty());
-		points.insert(points.begin(), beginIt, halfIt);
+		points.insert(points.begin(), firstHalf.begin(), firstHalf.end());
 
-		std::vector<std::pair<point_t, size_t>> &otherPoints = otherRange.points;
 		otherPoints.clear();
-		otherPoints.insert(otherPoints.begin(), halfIt, endIt);
+		otherPoints.insert(otherPoints.begin(), secondHalf.begin(), secondHalf.end());
 	}
 };
+
 
 template<typename POINT=point_t>
 struct Cluster {
