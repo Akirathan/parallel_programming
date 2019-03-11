@@ -145,13 +145,14 @@ public:
 		std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
 		this->points = &points;
+		this->assignments = &assignments;
 
 		initClusters();
-		initAssignments(assignments);
+		initAssignments();
 
 		while (iters > 0) {
 		    iters--;
-			computePointsAssignment(assignments);
+			computePointsAssignment();
 			computeNewCentroids();
 		}
 
@@ -164,6 +165,7 @@ private:
 	size_t k;
 	size_t iters;
 	const std::vector<POINT> *points;
+	std::vector<ASGN> *assignments;
 	std::vector<POINT> sums;
 	std::vector<size_t> counts;
 	std::vector<Cluster<POINT>> clusters;
@@ -209,19 +211,21 @@ private:
 		}
 	}
 
-	void initAssignments(std::vector<ASGN> &assignments)
+	void initAssignments()
 	{
 	    assert(points);
-		assignments.resize(points->size());
+	    assert(assignments);
+		assignments->resize(points->size());
+	}
 	}
 
 	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
-		// TODO
+		assignments = std::move(*this->assignments);
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
-	void computePointsAssignment(std::vector<ASGN> &assignments)
+	void computePointsAssignment()
 	{
 		std::vector<std::pair<POINT, size_t>> pointIdxVector = createPointIdxPairVector();
 		PointRange pointRange(pointIdxVector);
