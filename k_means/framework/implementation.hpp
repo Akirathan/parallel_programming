@@ -143,15 +143,8 @@ public:
 
 		while (iters > 0) {
 		    iters--;
-			// Parallel for - assign all points. ////
-			// Construct range from points
-			std::vector<std::pair<POINT, size_t>> pointIdxVector;
-			createPointIdxPairVector(pointIdxVector);
-			PointRange pointRange(pointIdxVector);
-
-			tbb::parallel_for(pointRange, [&](const PointRange &range) {
-				computePointsAssignment(range, centroids, assignments);
-			});
+			computePointsAssignment(assignments);
+			computeNewCentroids();
 		}
 		std::cout << std::endl;
 	}
@@ -211,22 +204,41 @@ private:
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
-	void computePointsAssignment(const PointRange &range, const std::vector<POINT> &centroids,
-			std::vector<ASGN> &assignments)
+	void computePointsAssignment(std::vector<ASGN> &assignments)
 	{
-		for (size_t i = 0; i < range.get_points().size(); i++) {
-			point_t point = range.get_points()[i].first;
-			size_t pointIdx = range.get_points()[i].second;
+		std::vector<std::pair<POINT, size_t>> pointIdxVector;
+		createPointIdxPairVector(pointIdxVector);
+		PointRange pointRange(pointIdxVector);
 
-			Cluster<POINT> &nearestCluster = getNearestCluster(point);
-			assignments[pointIdx] = static_cast<ASGN>(nearestCluster.index);
+		tbb::parallel_for(pointRange, [&](const PointRange &range)
+		{
+			for (const auto &item : range.get_points()) {
+				point_t point = item.first;
+				size_t pointIdx = item.second;
 
-			nearestCluster.sum.x += point.x;
-			nearestCluster.sum.y += point.y;
-			nearestCluster.count++;
-		}
+				Cluster<POINT> &nearestCluster = getNearestCluster(point);
+				assignments[pointIdx] = static_cast<ASGN>(nearestCluster.index);
+
+				nearestCluster.sum.x += point.x;
+				nearestCluster.sum.y += point.y;
+				nearestCluster.count++;
+			}
+		});
 	}
-		}
+
+	void computeNewCentroids()
+	{
+		ClusterRange<POINT> clusterRange(clusters);
+		tbb::parallel_for(clusterRange, [&](const ClusterRange<POINT> &range)
+		{
+			for (auto &cluster : range.get_clusters()) {
+				if (cluster.count == 0) {
+					continue; // If the cluster is empty, keep its previous centroid.
+				}
+				cluster.centroid.x = cluster.sum.x / (std::int16_t)cluster.count;
+				cluster.centroid.y = cluster.sum.y / (std::int16_t)cluster.count;
+			}
+		});
 	}
 
 	Cluster<POINT> & getNearestCluster(const POINT &point)
