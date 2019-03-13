@@ -151,6 +151,11 @@ public:
 		initAssignments();
 		initCentroids(centroids);
 
+		if (DEBUG) {
+			std::cerr << "Starting with clusters: " << std::endl;
+			printClusters();
+		}
+
 		while (iters > 0) {
 		    iters--;
 			computePointsAssignment();
@@ -158,7 +163,6 @@ public:
 		}
 
 		constructOutput(centroids, assignments);
-		std::cout << std::endl;
 	}
 
 private:
@@ -237,12 +241,21 @@ private:
 
 				Cluster<POINT> &nearestCluster = getNearestCluster(point);
 				assignPointIdxToCluster(pointIdx, nearestCluster);
+				if (DEBUG) {
+					std::cerr << "Assigning point with index " << pointIdx
+					          << " to cluster with index " << nearestCluster.index << std::endl;
+				}
 
 				nearestCluster.sum.x += point.x;
 				nearestCluster.sum.y += point.y;
 				nearestCluster.count++;
 			}
 		});
+
+		if (DEBUG) {
+			std::cerr << "computePointsAssignment finished" << std::endl;
+			printClusters();
+		}
 	}
 
 	void computeNewCentroids()
@@ -286,6 +299,15 @@ private:
 	void assignPointIdxToCluster(const size_t pointIdx, Cluster<POINT> &cluster)
 	{
 		(*assignments)[pointIdx] = static_cast<ASGN>(cluster.index);
+	}
+
+	void printClusters()
+	{
+		for (const auto &cluster: clusters) {
+			std::cerr << "Cluster: index=" << cluster.index << ", count=" << cluster.count
+					  << ", sum.x=" << cluster.sum.x << ", sum.y=" << cluster.sum.y
+					  << ", centroid.x=" << cluster.centroid.x << ", centroid.y=" << cluster.centroid.y << std::endl;
+		}
 	}
 };
 
