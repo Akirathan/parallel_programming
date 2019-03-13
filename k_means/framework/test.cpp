@@ -1,9 +1,10 @@
 #include <vector>
+#include <cassert>
 #include "implementation.hpp"
 
 int main()
 {
-    const size_t iters = 3;
+    const size_t iters = 1;
     const size_t k = 2;
 
     point_t a{1, 2};
@@ -14,8 +15,14 @@ int main()
 
     std::vector<point_t> centroids;
     std::vector<uint8_t> assignments;
-    KMeans kMeans;
+    KMeans<point_t, uint8_t, true> kMeans;
 
     kMeans.init(points.size(), k, iters);
     kMeans.compute(points, k, iters, centroids, assignments);
+
+    // [a], [b,c,d]
+    assert(assignments[0] != assignments[1]);
+    assert(assignments[1] == assignments[2] && assignments[2] == assignments[3]);
+    assert(centroids[0].x == 1 && centroids[0].y == 2);
+    assert(centroids[1].x == 5 && centroids[1].y == 6);
 }
