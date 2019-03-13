@@ -196,12 +196,12 @@ private:
 
 			Cluster<POINT> cluster;
 			cluster.index = i;
-			cluster.count = 1;
-			cluster.sum.x = point.x;
-			cluster.sum.y = point.y;
+			cluster.count = 0;
+			cluster.sum.x = 0;
+			cluster.sum.y = 0;
 			cluster.centroid = point;
 
-			clusters.emplace_back(std::move(cluster));
+			clusters[i] = std::move(cluster);
 		}
 	}
 
