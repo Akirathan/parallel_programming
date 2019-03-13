@@ -125,8 +125,6 @@ public:
 	{
 		this->k = k;
 		this->iters = iters;
-		sums.resize(k);
-		counts.resize(k);
 	}
 
 
@@ -171,8 +169,6 @@ private:
 	size_t iters;
 	const std::vector<POINT> *points;
 	std::vector<ASGN> *assignments;
-	std::vector<POINT> sums;
-	std::vector<size_t> counts;
 	std::vector<Cluster<POINT>> clusters;
 
 	std::vector<std::pair<POINT, size_t>> createPointIdxPairVector()
