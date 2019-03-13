@@ -156,6 +156,7 @@ public:
 
 		while (iters > 0) {
 		    iters--;
+		    resetBeforeIteration();
 			computePointsAssignment();
 			computeNewCentroids();
 		}
@@ -211,6 +212,15 @@ private:
 	void initCentroids(std::vector<POINT> &centroids)
 	{
 		centroids.resize(k);
+	}
+
+	void resetBeforeIteration()
+	{
+		for (auto &cluster : clusters) {
+			cluster.sum.x = 0;
+			cluster.sum.y = 0;
+			cluster.count = 0;
+		}
 	}
 
 	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
