@@ -219,7 +219,7 @@ private:
 
 	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
-		assignments = std::move(*this->assignments);
+		assignments = *this->assignments;
 
 		for (size_t i = 0; i < clusters.size(); i++) {
 			centroids[i].x = clusters[i].centroid.x;
