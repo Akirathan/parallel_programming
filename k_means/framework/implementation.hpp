@@ -296,7 +296,7 @@ private:
 		return (coord_t)(dx*dx + dy*dy);
 	}
 
-	void assignPointIdxToCluster(const size_t pointIdx, Cluster<POINT> &cluster)
+	void assignPointIdxToCluster(const size_t pointIdx, const Cluster<POINT> &cluster)
 	{
 		(*assignments)[pointIdx] = static_cast<ASGN>(cluster.index);
 	}
