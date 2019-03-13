@@ -276,16 +276,16 @@ private:
 	Cluster<POINT> & getNearestCluster(const POINT &point)
 	{
 		coord_t minDist = distance(point, clusters[0].centroid);
-		Cluster<POINT> &nearest = clusters[0];
+		size_t nearestIdx = 0;
 		for (std::size_t i = 1; i < clusters.size(); ++i) {
 			coord_t dist = distance(point, clusters[i].centroid);
 			if (dist < minDist) {
 				minDist = dist;
-				nearest = clusters[i];
+				nearestIdx = i;
 			}
 		}
 
-		return nearest;
+		return clusters[nearestIdx];
 	}
 
 	static coord_t distance(const POINT &point, const POINT &centroid)
