@@ -1,5 +1,6 @@
 #include <vector>
 #include <iostream>
+#include <functional>
 #include <cassert>
 #include "implementation.hpp"
 #include "../serial/implementation.hpp"
@@ -12,16 +13,28 @@ static void run_serial(size_t k, size_t iters, const std::vector<point_t> &point
 
 static void run_both_and_compare(size_t k, size_t iters, const std::vector<point_t> &points);
 
-template<typename T> void compare(const std::vector<T> &vectorA, const std::vector<T> &vectorB);
+void compare_centroids(const std::vector<point_t> &centroidsA, const std::vector<point_t> &centroidsB);
+void compare_assignments(const std::vector<uint8_t> &assignmentsA, const std::vector<uint8_t> &assignmentsB);
 
 static void sample_test();
 static void other_test();
+static void rnd_test();
+
+static std::vector<std::function<void(void)>> tests {
+    sample_test,
+    other_test,
+    rnd_test
+};
+
+const static bool debugOutput = false;
 
 
 int main()
 {
-    sample_test();
-    other_test();
+    for (const auto &test : tests) {
+        test();
+    }
+
     std::cerr << "All tests passed" << std::endl;
 }
 
@@ -38,7 +51,7 @@ void sample_test()
 
     std::vector<point_t> centroids;
     std::vector<uint8_t> assignments;
-    run_serial(k, iters, points, centroids, assignments);
+    run_parallel(k, iters, points, centroids, assignments);
 
     // [a], [b,c,d]
     assert(assignments[0] != assignments[1]);
@@ -60,10 +73,23 @@ void other_test()
     run_both_and_compare(k, iters, points);
 }
 
+static void rnd_test()
+{
+    const size_t iters = 5;
+    const size_t k = 2;
+    std::vector<point_t> points;
+    for (size_t i = 0; i < 40; i++) {
+        point_t point{static_cast<int64_t>(i), static_cast<int64_t>(i+1)};
+        points.push_back(point);
+    }
+
+    run_both_and_compare(k, iters, points);
+}
+
 void run_parallel(size_t k, size_t iters, const std::vector<point_t> &points, std::vector<point_t> &centroids,
                   std::vector<uint8_t> &assignments)
 {
-    KMeans<point_t, uint8_t, true> kMeans;
+    KMeans<point_t, uint8_t, debugOutput> kMeans;
     kMeans.init(points.size(), k, iters);
     kMeans.compute(points, k, iters, centroids, assignments);
 }
@@ -86,8 +112,8 @@ void run_both_and_compare(size_t k, size_t iters, const std::vector<point_t> &po
     run_parallel(k, iters, points, parallelCentroids, parallelAssignments);
     run_serial(k, iters, points, serialCentroids, serialAssignments);
 
-    compare(parallelCentroids, serialCentroids);
-    compare(parallelAssignments, serialAssignments);
+    compare_centroids(parallelCentroids, serialCentroids);
+    compare_assignments(parallelAssignments, serialAssignments);
 }
 
 bool operator==(const point_t &pointA, const point_t &pointB)
@@ -95,13 +121,34 @@ bool operator==(const point_t &pointA, const point_t &pointB)
     return pointA.x == pointB.x && pointA.y == pointB.y;
 }
 
-template<typename T>
-void compare(const std::vector<T> &vectorA, const std::vector<T> &vectorB)
+std::ostream &operator<<(std::ostream &os, const point_t &point)
 {
-    assert(vectorA.size() == vectorB.size());
+    os << "x: " << point.x << " y: " << point.y;
+    return os;
+}
 
-    for (size_t i = 0; i < vectorA.size(); i++) {
-        assert(vectorA[i] == vectorB[i]);
+
+void compare_centroids(const std::vector<point_t> &centroidsA, const std::vector<point_t> &centroidsB)
+{
+    assert(centroidsA.size() == centroidsB.size());
+
+    for (size_t i = 0; i < centroidsA.size(); i++) {
+        if (!(centroidsA[i] == centroidsB[i])) {
+            std::cerr << "Centroids differ - expected:" << centroidsA[i] << " got:" << centroidsB[i] << std::endl;
+            assert(false);
+        }
+    }
+}
+
+void compare_assignments(const std::vector<uint8_t> &assignmentsA, const std::vector<uint8_t> &assignmentsB)
+{
+    assert(assignmentsA.size() == assignmentsB.size());
+
+    for (size_t i = 0; i < assignmentsA.size(); i++) {
+        if (assignmentsA[i] != assignmentsB[i]) {
+            std::cerr << "Assignments differ - expected:" << assignmentsA[i] << " got:" << assignmentsB[i] << std::endl;
+            assert(false);
+        }
     }
 }
 
