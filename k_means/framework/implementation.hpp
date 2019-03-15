@@ -3,8 +3,10 @@
 
 #include <iostream>
 #include <cassert>
+#include <memory>
 
 #include <tbb/parallel_for.h>
+#include <tbb/mutex.h>
 
 #include <interface.hpp>
 #include <exception.hpp>
@@ -63,10 +65,19 @@ private:
 
 template<typename POINT=point_t>
 struct Cluster {
+	std::unique_ptr<tbb::mutex> mutex;
 	size_t index;
 	size_t count;
 	POINT sum;
 	POINT centroid;
+
+	Cluster(size_t index, POINT centroid)
+		: mutex(std::make_unique<tbb::mutex>()),
+		index(index),
+		count(0),
+		sum{0, 0},
+		centroid(centroid)
+	{}
 };
 
 template<typename POINT=point_t>
@@ -75,6 +86,7 @@ public:
 	ClusterRange(std::vector<Cluster<POINT>> &clusters)
 	{
 		for (auto &cluster : clusters) {
+			// TODO: push_back? To je asi prehlednejsi
 			this->clusters.emplace_back(&cluster);
 		}
 	}
@@ -186,19 +198,10 @@ private:
 	{
 		assert(points);
 
-		clusters.resize(k);
-
 		for (size_t i = 0; i < k; i++) {
 			POINT point = (*points)[i];
 
-			Cluster<POINT> cluster;
-			cluster.index = i;
-			cluster.count = 0;
-			cluster.sum.x = 0;
-			cluster.sum.y = 0;
-			cluster.centroid = point;
-
-			clusters[i] = std::move(cluster);
+			clusters.emplace_back(i, point);
 		}
 	}
 
@@ -246,6 +249,8 @@ private:
 				size_t pointIdx = item.second;
 
 				Cluster<POINT> &nearestCluster = getNearestCluster(point);
+				tbb::mutex::scoped_lock lock(*nearestCluster.mutex);
+
 				assignPointIdxToCluster(pointIdx, nearestCluster);
 				if (DEBUG) {
 					std::cerr << "Assigning point with index " << pointIdx
@@ -270,6 +275,7 @@ private:
 		tbb::parallel_for(clusterRange, [&](const ClusterRange<POINT> &range)
 		{
 			for (Cluster<POINT> *cluster : range.get_clusters()) {
+				tbb::mutex::scoped_lock lock(*cluster->mutex);
 				if (cluster->count == 0) {
 					continue; // If the cluster is empty, keep its previous centroid.
 				}
@@ -310,6 +316,7 @@ private:
 	void printClusters()
 	{
 		for (const auto &cluster: clusters) {
+			tbb::mutex::scoped_lock lock(*cluster.mutex);
 			std::cerr << "Cluster: index=" << cluster.index << ", count=" << cluster.count
 					  << ", sum.x=" << cluster.sum.x << ", sum.y=" << cluster.sum.y
 					  << ", centroid.x=" << cluster.centroid.x << ", centroid.y=" << cluster.centroid.y << std::endl;
