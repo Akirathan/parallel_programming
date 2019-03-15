@@ -220,6 +220,7 @@ private:
 	void resetBeforeIteration()
 	{
 		for (auto &cluster : clusters) {
+			tbb::mutex::scoped_lock lock(*cluster.mutex);
 			cluster.sum.x = 0;
 			cluster.sum.y = 0;
 			cluster.count = 0;
@@ -231,6 +232,7 @@ private:
 		assignments = *this->assignments;
 
 		for (size_t i = 0; i < clusters.size(); i++) {
+			tbb::mutex::scoped_lock lock(*clusters[i].mutex);
 			centroids[i].x = clusters[i].centroid.x;
 			centroids[i].y = clusters[i].centroid.y;
 		}
