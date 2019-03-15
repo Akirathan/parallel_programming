@@ -13,12 +13,19 @@ include_directories(${TBB_ROOT_DIR}/include)
 include_directories(${FRAMEWORK_DIR})
 include_directories(${FRAMEWORK_DIR}/internal)
 
+set(IS_TESTING_VERSION TRUE)
+
 set(SOURCES
-        #${FRAMEWORK_DIR}/k-means.cpp
-        ${FRAMEWORK_DIR}/test.cpp
         ${FRAMEWORK_DIR}/implementation.hpp
         ${FRAMEWORK_DIR}/try.hpp
         )
+
+if (IS_TESTING_VERSION)
+    list(APPEND SOURCES ${FRAMEWORK_DIR}/test.cpp)
+else()
+    list(APPEND SOURCES ${FRAMEWORK_DIR}/k-means.cpp)
+    add_compile_options("-O3")
+endif ()
 
 add_executable(k_means ${SOURCES})
 
