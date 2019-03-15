@@ -4,6 +4,7 @@
 #include <cassert>
 #include "implementation.hpp"
 #include "../serial/implementation.hpp"
+#include "try.hpp"
 
 static void run_parallel(size_t k, size_t iters, const std::vector<point_t> &points, std::vector<point_t> &centroids,
                          std::vector<uint8_t> &assignments);
@@ -31,8 +32,12 @@ const static bool debugOutput = false;
 
 int main()
 {
-    for (const auto &test : tests) {
-        test();
+    //test_two_parrallel_fors();
+
+    for (size_t i = 0; i < 100; ++i) {
+        for (const auto &test : tests) {
+            test();
+        }
     }
 
     std::cerr << "All tests passed" << std::endl;
@@ -78,7 +83,7 @@ static void rnd_test()
     const size_t iters = 5;
     const size_t k = 2;
     std::vector<point_t> points;
-    for (size_t i = 0; i < 40; i++) {
+    for (size_t i = 0; i < 100; i++) {
         point_t point{static_cast<int64_t>(i), static_cast<int64_t>(i+1)};
         points.push_back(point);
     }
