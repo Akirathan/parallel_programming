@@ -17,6 +17,7 @@ set(SOURCES
         #${FRAMEWORK_DIR}/k-means.cpp
         ${FRAMEWORK_DIR}/test.cpp
         ${FRAMEWORK_DIR}/implementation.hpp
+        ${FRAMEWORK_DIR}/try.hpp
         )
 
 add_executable(k_means ${SOURCES})
