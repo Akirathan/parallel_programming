@@ -58,7 +58,7 @@ public:
 	}
 
 private:
-	static const size_t minRange = 2;
+	static const size_t minRange = 256;
 	std::vector<std::pair<point_t, size_t>> points;
 };
 
@@ -86,8 +86,7 @@ public:
 	ClusterRange(std::vector<Cluster<POINT>> &clusters)
 	{
 		for (auto &cluster : clusters) {
-			// TODO: push_back? To je asi prehlednejsi
-			this->clusters.emplace_back(&cluster);
+			this->clusters.push_back(&cluster);
 		}
 	}
 
@@ -118,7 +117,7 @@ public:
 	}
 
 private:
-	const size_t minRange = 2;
+	const size_t minRange = 256;
 	std::vector<Cluster<POINT> *> clusters;
 };
 
