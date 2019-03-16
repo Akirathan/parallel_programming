@@ -51,11 +51,11 @@ def compare_files(file_1, file_2) -> bool:
 	return filecmp.cmp(file_1, file_2, shallow=False)
 	
 def fail(test_input):
-	print(f"Test input {test_input} FAILED, exitting...")
+	print("Test FAILED, exitting...")
 	exit(1)
 
 def success(test_input):
-	print(f"Test input {test_input} SUCEEDED")
+	print("Test SUCEEDED")
 
 def run_serial(test_input):
 	args = [SERIAL_EXE, test_input["points_file"], test_input["k"], test_input["iters"], SERIAL_CENTROIDS_FILE, SERIAL_ASSIGN_FILE]
@@ -93,7 +93,7 @@ def run_test(test_input):
 	if EXIT_AFTER_FIRST_FAIL and not test_succ:
 		fail(test_input)
 	elif not test_succ:
-		print(f"Test {test_input} FAILED")
+		print("Test FAILED")
 	elif test_succ:
 		success(test_input)
 
