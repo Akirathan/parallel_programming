@@ -280,8 +280,8 @@ private:
 				if (cluster->count == 0) {
 					continue; // If the cluster is empty, keep its previous centroid.
 				}
-				cluster->centroid.x = cluster->sum.x / (std::int16_t)cluster->count;
-				cluster->centroid.y = cluster->sum.y / (std::int16_t)cluster->count;
+				cluster->centroid.x = cluster->sum.x / (std::int64_t)cluster->count;
+				cluster->centroid.y = cluster->sum.y / (std::int64_t)cluster->count;
 			}
 		});
 	}
