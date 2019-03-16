@@ -12,11 +12,6 @@
 #include <tbb/parallel_for.h>
 #include <tbb/mutex.h>
 
-enum class Operation {
-    PLUS,
-    MINUS
-};
-
 void test_two_parrallel_fors()
 {
     int data = 0;
@@ -33,8 +28,6 @@ void test_two_parrallel_fors()
             data--;
         });
     }
-
-    std::cout << data << std::endl;
 }
 
 #endif //K_MEANS_TRY_HPP
