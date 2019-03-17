@@ -32,13 +32,16 @@ struct PointWithAssignment: public point_t {
     size_t idx;
 	size_t assignedClusterIdx;
 
-	PointWithAssignment(size_t idx)
+	PointWithAssignment(size_t idx, point_t point)
 		: idx(idx),
 		assignedClusterIdx(0)
-	{}
+	{
+		this->x = point.x;
+		this->y = point.y;
+	}
 
 	PointWithAssignment()
-        : PointWithAssignment(0)
+        : PointWithAssignment(0, {0, 0})
 	{}
 };
 
@@ -195,7 +198,7 @@ private:
 	void initPoints(const std::vector<POINT> &points)
 	{
 	    for (size_t i = 0; i < points.size(); i++) {
-	    	this->points.emplace_back(i);
+	    	this->points.emplace_back(i, points[i]);
 	    }
 	}
 
