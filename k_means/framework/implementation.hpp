@@ -302,6 +302,7 @@ private:
 	void assignPointIdxToCluster(const size_t pointIdx, const Cluster<POINT> &cluster)
 	{
 		(*assignments)[pointIdx] = static_cast<ASGN>(cluster.index);
+		points[pointIdx].assignedClusterIdx = cluster.index;
 	}
 
 	void printClusters()
