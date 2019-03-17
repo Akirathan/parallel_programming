@@ -91,47 +91,6 @@ struct Cluster {
 	{}
 };
 
-template<typename POINT=point_t>
-class ClusterRange {
-public:
-	ClusterRange(std::vector<Cluster<POINT>> &clusters)
-	{
-		for (auto &cluster : clusters) {
-			this->clusters.push_back(&cluster);
-		}
-	}
-
-	ClusterRange(ClusterRange &other, tbb::split)
-	{
-	    assert(clusters.empty());
-		half_split_vector(other.clusters, clusters);
-	}
-
-	std::vector<Cluster<POINT> *> & get_clusters()
-	{
-		return clusters;
-	}
-
-    const std::vector<Cluster<POINT> *> & get_clusters() const
-    {
-        return clusters;
-    }
-
-	bool is_divisible() const
-	{
-		return clusters.size() > minRange;
-	}
-
-	bool empty() const
-	{
-		return clusters.empty();
-	}
-
-private:
-	const size_t minRange = 256;
-	std::vector<Cluster<POINT> *> clusters;
-};
-
 
 template<typename POINT = point_t, typename ASGN = std::uint8_t, bool DEBUG = false>
 class KMeans : public IKMeans<POINT, ASGN, DEBUG>
@@ -277,7 +236,7 @@ private:
 		}
 
 		// Compute new centroids
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, k), [&](const tbb::blocked_range<size_t> &range)
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, 2), [&](const tbb::blocked_range<size_t> &range)
 		{
 			for (size_t i = range.begin(); i != range.end(); i++) {
 				if (counts[i] == 0) {
