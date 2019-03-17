@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <array>
 
 #include <tbb/parallel_for.h>
 
@@ -184,6 +185,7 @@ public:
 
 private:
 	using coord_t = typename POINT::coord_t;
+	static const size_t MAX_CLUSTER_COUNT = 256;
 	size_t k;
 	size_t iters;
 	std::vector<PointWithAssignment> points;
@@ -248,10 +250,6 @@ private:
 					std::cerr << "Assigning point with index " << point.idx
 					          << " to cluster with index " << nearestCluster.index << std::endl;
 				}
-
-				//nearestCluster.sum.x += point.x;
-				//nearestCluster.sum.y += point.y;
-				//nearestCluster.count++;
 			}
 		});
 
@@ -263,15 +261,27 @@ private:
 
 	void computeNewCentroids()
 	{
-		ClusterRange<POINT> clusterRange(clusters);
-		tbb::parallel_for(clusterRange, [&](const ClusterRange<POINT> &range)
+		// Compute temporary values - sums and counts for every cluster.
+		std::array<size_t, MAX_CLUSTER_COUNT> counts;
+		std::array<POINT, MAX_CLUSTER_COUNT> sums;
+		counts.fill(0);
+		sums.fill({0, 0});
+
+		for (const PointWithAssignment &point : points) {
+			sums[point.assignedClusterIdx].x += point.x;
+			sums[point.assignedClusterIdx].y += point.y;
+			counts[point.assignedClusterIdx]++;
+		}
+
+		// Compute new centroids
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, k), [&](const tbb::blocked_range<size_t> &range)
 		{
-			for (Cluster<POINT> *cluster : range.get_clusters()) {
-				//if (cluster->count == 0) {
-					//continue; // If the cluster is empty, keep its previous centroid.
-				//}
-				//cluster->centroid.x = cluster->sum.x / (std::int64_t)cluster->count;
-				//cluster->centroid.y = cluster->sum.y / (std::int64_t)cluster->count;
+			for (size_t i = range.begin(); i != range.end(); i++) {
+				if (counts[i] == 0) {
+					continue; // If the cluster is empty, keep its previous centroid.
+				}
+				clusters[i].centroid.x = sums[i].x / (std::int64_t)counts[i];
+				clusters[i].centroid.y = sums[i].y / (std::int64_t)counts[i];
 			}
 		});
 	}
