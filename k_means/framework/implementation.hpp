@@ -190,18 +190,11 @@ private:
 	std::vector<ASGN> *assignments;
 	std::vector<Cluster<POINT>> clusters;
 
-	std::vector<PointWithAssignment> createPointIdxPairVector()
-	{
-		std::vector<PointWithAssignment> vec;
-		for (size_t i = 0; i < points.size(); i++) {
-			vec.emplace_back(i);
-		}
-		return vec;
-	}
-
 	void initPoints(const std::vector<POINT> &points)
 	{
-	    this->points.resize(points.size());
+	    for (size_t i = 0; i < points.size(); i++) {
+	    	this->points.emplace_back(i);
+	    }
 	}
 
 	void initClusters()
@@ -242,8 +235,7 @@ private:
 	// First part of the algorithm -- assign all the points to nearest cluster.
 	void computePointsAssignment()
 	{
-		std::vector<PointWithAssignment> pointVector = createPointIdxPairVector();
-		PointRange pointRange(pointVector);
+		PointRange pointRange(points);
 
 		tbb::parallel_for(pointRange, [&](const PointRange &range)
 		{
