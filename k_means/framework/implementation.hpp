@@ -3,10 +3,8 @@
 
 #include <iostream>
 #include <cassert>
-#include <memory>
 
 #include <tbb/parallel_for.h>
-#include <tbb/mutex.h>
 
 #include <interface.hpp>
 #include <exception.hpp>
@@ -29,9 +27,24 @@ void half_split_vector(std::vector<T> &sourceVector, std::vector<T> &destVector)
 }
 
 
+struct PointWithAssignment: public point_t {
+    size_t idx;
+	size_t assignedClusterIdx;
+
+	PointWithAssignment(size_t idx)
+		: idx(idx),
+		assignedClusterIdx(0)
+	{}
+
+	PointWithAssignment()
+        : PointWithAssignment(0)
+	{}
+};
+
+
 class PointRange {
 public:
-	PointRange(const std::vector<std::pair<point_t, size_t>> &points)
+	PointRange(const std::vector<PointWithAssignment> &points)
 		: points(points)
 	{
 	}
@@ -42,7 +55,7 @@ public:
 		half_split_vector(otherRange.points, points);
 	}
 
-	const std::vector<std::pair<point_t, size_t>> & get_points() const
+	const std::vector<PointWithAssignment> & get_points() const
 	{
 		return points;
 	}
@@ -59,23 +72,17 @@ public:
 
 private:
 	static const size_t minRange = 256;
-	std::vector<std::pair<point_t, size_t>> points;
+	std::vector<PointWithAssignment> points;
 };
 
 
 template<typename POINT=point_t>
 struct Cluster {
-	std::unique_ptr<tbb::mutex> mutex;
 	size_t index;
-	size_t count;
-	POINT sum;
 	POINT centroid;
 
 	Cluster(size_t index, POINT centroid)
-		: mutex(std::make_unique<tbb::mutex>()),
-		index(index),
-		count(0),
-		sum{0, 0},
+		: index(index),
 		centroid(centroid)
 	{}
 };
@@ -153,9 +160,9 @@ public:
 	virtual void compute(const std::vector<POINT> &points, std::size_t k, std::size_t iters,
 		std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
-		this->points = &points;
 		this->assignments = &assignments;
 
+		initPoints(points);
 		initClusters();
 		initAssignments();
 		initCentroids(centroids);
@@ -179,26 +186,28 @@ private:
 	using coord_t = typename POINT::coord_t;
 	size_t k;
 	size_t iters;
-	const std::vector<POINT> *points;
+	std::vector<PointWithAssignment> points;
 	std::vector<ASGN> *assignments;
 	std::vector<Cluster<POINT>> clusters;
 
-	std::vector<std::pair<POINT, size_t>> createPointIdxPairVector()
+	std::vector<PointWithAssignment> createPointIdxPairVector()
 	{
-		assert(points);
-		std::vector<std::pair<POINT, size_t>> vec;
-		for (size_t i = 0; i < points->size(); i++) {
-			vec.push_back(std::make_pair((*points)[i], i));
+		std::vector<PointWithAssignment> vec;
+		for (size_t i = 0; i < points.size(); i++) {
+			vec.emplace_back(i);
 		}
 		return vec;
 	}
 
+	void initPoints(const std::vector<POINT> &points)
+	{
+	    this->points.resize(points.size());
+	}
+
 	void initClusters()
 	{
-		assert(points);
-
 		for (size_t i = 0; i < k; i++) {
-			POINT point = (*points)[i];
+			POINT &point = points[i];
 
 			clusters.emplace_back(i, point);
 		}
@@ -206,9 +215,8 @@ private:
 
 	void initAssignments()
 	{
-	    assert(points);
 	    assert(assignments);
-		assignments->resize(points->size());
+		assignments->resize(points.size());
 	}
 
 	void initCentroids(std::vector<POINT> &centroids)
@@ -218,12 +226,7 @@ private:
 
 	void resetBeforeIteration()
 	{
-		for (auto &cluster : clusters) {
-			tbb::mutex::scoped_lock lock(*cluster.mutex);
-			cluster.sum.x = 0;
-			cluster.sum.y = 0;
-			cluster.count = 0;
-		}
+	    // TODO
 	}
 
 	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
@@ -231,7 +234,6 @@ private:
 		assignments = *this->assignments;
 
 		for (size_t i = 0; i < clusters.size(); i++) {
-			tbb::mutex::scoped_lock lock(*clusters[i].mutex);
 			centroids[i].x = clusters[i].centroid.x;
 			centroids[i].y = clusters[i].centroid.y;
 		}
@@ -240,27 +242,24 @@ private:
 	// First part of the algorithm -- assign all the points to nearest cluster.
 	void computePointsAssignment()
 	{
-		std::vector<std::pair<POINT, size_t>> pointIdxVector = createPointIdxPairVector();
-		PointRange pointRange(pointIdxVector);
+		std::vector<PointWithAssignment> pointVector = createPointIdxPairVector();
+		PointRange pointRange(pointVector);
 
 		tbb::parallel_for(pointRange, [&](const PointRange &range)
 		{
-			for (const auto &item : range.get_points()) {
-				point_t point = item.first;
-				size_t pointIdx = item.second;
+			for (const PointWithAssignment &point : range.get_points()) {
 
 				Cluster<POINT> &nearestCluster = getNearestCluster(point);
-				tbb::mutex::scoped_lock lock(*nearestCluster.mutex);
 
-				assignPointIdxToCluster(pointIdx, nearestCluster);
+				assignPointIdxToCluster(point.idx, nearestCluster);
 				if (DEBUG) {
-					std::cerr << "Assigning point with index " << pointIdx
+					std::cerr << "Assigning point with index " << point.idx
 					          << " to cluster with index " << nearestCluster.index << std::endl;
 				}
 
-				nearestCluster.sum.x += point.x;
-				nearestCluster.sum.y += point.y;
-				nearestCluster.count++;
+				//nearestCluster.sum.x += point.x;
+				//nearestCluster.sum.y += point.y;
+				//nearestCluster.count++;
 			}
 		});
 
@@ -276,12 +275,11 @@ private:
 		tbb::parallel_for(clusterRange, [&](const ClusterRange<POINT> &range)
 		{
 			for (Cluster<POINT> *cluster : range.get_clusters()) {
-				tbb::mutex::scoped_lock lock(*cluster->mutex);
-				if (cluster->count == 0) {
-					continue; // If the cluster is empty, keep its previous centroid.
-				}
-				cluster->centroid.x = cluster->sum.x / (std::int64_t)cluster->count;
-				cluster->centroid.y = cluster->sum.y / (std::int64_t)cluster->count;
+				//if (cluster->count == 0) {
+					//continue; // If the cluster is empty, keep its previous centroid.
+				//}
+				//cluster->centroid.x = cluster->sum.x / (std::int64_t)cluster->count;
+				//cluster->centroid.y = cluster->sum.y / (std::int64_t)cluster->count;
 			}
 		});
 	}
@@ -317,9 +315,7 @@ private:
 	void printClusters()
 	{
 		for (const auto &cluster: clusters) {
-			tbb::mutex::scoped_lock lock(*cluster.mutex);
-			std::cerr << "Cluster: index=" << cluster.index << ", count=" << cluster.count
-					  << ", sum.x=" << cluster.sum.x << ", sum.y=" << cluster.sum.y
+			std::cerr << "Cluster: index=" << cluster.index
 					  << ", centroid.x=" << cluster.centroid.x << ", centroid.y=" << cluster.centroid.y << std::endl;
 		}
 	}
