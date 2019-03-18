@@ -152,8 +152,10 @@ public:
 
 		while (iters > 0) {
 		    iters--;
+		    bool finalIteration = iters == 0;
+
 		    resetBeforeIteration();
-			SumCountArrays arrays = computePointsAssignment();
+			SumCountArrays arrays = computePointsAssignment(finalIteration);
 			computeNewCentroids(arrays);
 		}
 
@@ -211,7 +213,7 @@ private:
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
-	SumCountArrays computePointsAssignment()
+	SumCountArrays computePointsAssignment(bool finalIteration)
 	{
 		PointRange pointRange(points);
 		SumCountArrays initArrays;
@@ -221,7 +223,10 @@ private:
                 [&](const PointRange &range, SumCountArrays arrays) -> SumCountArrays {
                     for (const PointWithAssignment &point : range.get_points()) {
                         Cluster<POINT> &nearestCluster = getNearestCluster(point);
-                        assignPointIdxToCluster(point.idx, nearestCluster);
+
+                        if (finalIteration) {
+							assignPointIdxToCluster(point.idx, nearestCluster);
+                        }
 
                         arrays.counts[nearestCluster.index]++;
                         arrays.sums[nearestCluster.index].x += point.x;
