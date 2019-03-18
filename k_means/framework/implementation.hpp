@@ -6,9 +6,12 @@
 #include <array>
 
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 
 #include <interface.hpp>
 #include <exception.hpp>
+
+static const size_t MAX_CLUSTER_COUNT = 256;
 
 /**
  *
@@ -91,6 +94,17 @@ struct Cluster {
 	{}
 };
 
+struct SumCountArrays {
+	std::array<size_t, MAX_CLUSTER_COUNT> counts;
+	std::array<point_t, MAX_CLUSTER_COUNT> sums;
+
+	SumCountArrays()
+	{
+		counts.fill(0);
+		sums.fill({0, 0});
+	};
+};
+
 
 template<typename POINT = point_t, typename ASGN = std::uint8_t, bool DEBUG = false>
 class KMeans : public IKMeans<POINT, ASGN, DEBUG>
@@ -138,8 +152,8 @@ public:
 		while (iters > 0) {
 		    iters--;
 		    resetBeforeIteration();
-			computePointsAssignment();
-			computeNewCentroids();
+			SumCountArrays arrays = computePointsAssignment();
+			computeNewCentroids(arrays);
 		}
 
 		constructOutput(centroids, assignments);
@@ -147,7 +161,6 @@ public:
 
 private:
 	using coord_t = typename POINT::coord_t;
-	static const size_t MAX_CLUSTER_COUNT = 256;
 	size_t k;
 	size_t iters;
 	std::vector<PointWithAssignment> points;
@@ -197,53 +210,54 @@ private:
 	}
 
 	// First part of the algorithm -- assign all the points to nearest cluster.
-	void computePointsAssignment()
+	SumCountArrays computePointsAssignment()
 	{
 		PointRange pointRange(points);
+		SumCountArrays initArrays;
 
-		tbb::parallel_for(pointRange, [&](const PointRange &range)
-		{
-			for (const PointWithAssignment &point : range.get_points()) {
+		SumCountArrays finalArrays =
+            tbb::parallel_reduce(pointRange, initArrays,
+                [&](const PointRange &range, SumCountArrays arrays) -> SumCountArrays {
+                    for (const PointWithAssignment &point : range.get_points()) {
+                        Cluster<POINT> &nearestCluster = getNearestCluster(point);
+                        assignPointIdxToCluster(point.idx, nearestCluster);
 
-				Cluster<POINT> &nearestCluster = getNearestCluster(point);
-
-				assignPointIdxToCluster(point.idx, nearestCluster);
-				if (DEBUG) {
-					std::cerr << "Assigning point with index " << point.idx
-					          << " to cluster with index " << nearestCluster.index << std::endl;
-				}
-			}
-		});
+                        arrays.counts[nearestCluster.index]++;
+                        arrays.sums[nearestCluster.index].x += point.x;
+                        arrays.sums[nearestCluster.index].y += point.y;
+                    }
+                    return arrays;
+                },
+                [](SumCountArrays arrays1, SumCountArrays arrays2) -> SumCountArrays {
+                    SumCountArrays resArrays;
+                    for (size_t i = 0; i < arrays1.sums.max_size(); i++) {
+                        resArrays.sums[i].x = arrays1.sums[i].x + arrays2.sums[i].x;
+                        resArrays.sums[i].y = arrays1.sums[i].y + arrays2.sums[i].y;
+                        resArrays.counts[i] = arrays1.counts[i] + arrays2.counts[i];
+                    }
+                    return resArrays;
+                }
+            );
 
 		if (DEBUG) {
 			std::cerr << "computePointsAssignment finished" << std::endl;
 			printClusters();
 		}
+
+		return finalArrays;
 	}
 
-	void computeNewCentroids()
+	void computeNewCentroids(const SumCountArrays &arrays)
 	{
-		// Compute temporary values - sums and counts for every cluster.
-		std::array<size_t, MAX_CLUSTER_COUNT> counts;
-		std::array<POINT, MAX_CLUSTER_COUNT> sums;
-		counts.fill(0);
-		sums.fill({0, 0});
-
-		for (const PointWithAssignment &point : points) {
-			sums[point.assignedClusterIdx].x += point.x;
-			sums[point.assignedClusterIdx].y += point.y;
-			counts[point.assignedClusterIdx]++;
-		}
-
 		// Compute new centroids
 		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, 16), [&](const tbb::blocked_range<size_t> &range)
 		{
 			for (size_t i = range.begin(); i != range.end(); i++) {
-				if (counts[i] == 0) {
+				if (arrays.counts[i] == 0) {
 					continue; // If the cluster is empty, keep its previous centroid.
 				}
-				clusters[i].centroid.x = sums[i].x / (std::int64_t)counts[i];
-				clusters[i].centroid.y = sums[i].y / (std::int64_t)counts[i];
+				clusters[i].centroid.x = arrays.sums[i].x / (std::int64_t)arrays.counts[i];
+				clusters[i].centroid.y = arrays.sums[i].y / (std::int64_t)arrays.counts[i];
 			}
 		});
 	}
