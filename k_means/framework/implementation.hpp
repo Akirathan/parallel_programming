@@ -75,7 +75,7 @@ public:
 	}
 
 private:
-	static const size_t minRange = 256;
+	static const size_t minRange = 1024;
 	std::vector<PointWithAssignment> points;
 };
 
@@ -236,7 +236,7 @@ private:
 		}
 
 		// Compute new centroids
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, 2), [&](const tbb::blocked_range<size_t> &range)
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, 16), [&](const tbb::blocked_range<size_t> &range)
 		{
 			for (size_t i = range.begin(); i != range.end(); i++) {
 				if (counts[i] == 0) {
