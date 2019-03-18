@@ -31,7 +31,7 @@ static std::vector<std::function<void(void)>> tests {
     sample_test,
     other_test,
     rnd_test,
-    //big_tests
+    //big_tests,
     file_test
 };
 
@@ -103,8 +103,8 @@ static void rnd_test()
 void big_tests()
 {
     const size_t iters = 100;
-    const size_t k = 240;
-    std::vector<point_t> points = generate_random_points(100 * 1024);
+    const size_t k = 180;
+    std::vector<point_t> points = generate_random_points(40 * 1024);
 
     run_both_and_compare(k, iters, points);
 }
