@@ -12,6 +12,8 @@
 #include <exception.hpp>
 
 static const size_t MAX_CLUSTER_COUNT = 256;
+static const size_t POINTS_GRAIN_SIZE = 1024;
+static const size_t CLUSTERS_GRAIN_SIZE = 16;
 
 /**
  *
@@ -69,7 +71,7 @@ public:
 
 	bool is_divisible() const
 	{
-		return points.size() > minRange;
+		return points.size() > POINTS_GRAIN_SIZE;
 	}
 
 	bool empty() const
@@ -78,7 +80,6 @@ public:
 	}
 
 private:
-	static const size_t minRange = 1024;
 	std::vector<PointWithAssignment> points;
 };
 
@@ -250,16 +251,17 @@ private:
 	void computeNewCentroids(const SumCountArrays &arrays)
 	{
 		// Compute new centroids
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, 16), [&](const tbb::blocked_range<size_t> &range)
-		{
-			for (size_t i = range.begin(); i != range.end(); i++) {
-				if (arrays.counts[i] == 0) {
-					continue; // If the cluster is empty, keep its previous centroid.
-				}
-				clusters[i].centroid.x = arrays.sums[i].x / (std::int64_t)arrays.counts[i];
-				clusters[i].centroid.y = arrays.sums[i].y / (std::int64_t)arrays.counts[i];
-			}
-		});
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, CLUSTERS_GRAIN_SIZE),
+            [&](const tbb::blocked_range<size_t> &range) {
+                for (size_t i = range.begin(); i != range.end(); i++) {
+                    if (arrays.counts[i] == 0) {
+                        continue; // If the cluster is empty, keep its previous centroid.
+                    }
+                    clusters[i].centroid.x = arrays.sums[i].x / (std::int64_t)arrays.counts[i];
+                    clusters[i].centroid.y = arrays.sums[i].y / (std::int64_t)arrays.counts[i];
+                }
+            }
+        );
 	}
 
 	Cluster<POINT> & getNearestCluster(const POINT &point)
@@ -288,7 +290,6 @@ private:
 	void assignPointIdxToCluster(const size_t pointIdx, const Cluster<POINT> &cluster)
 	{
 		(*assignments)[pointIdx] = static_cast<ASGN>(cluster.index);
-		points[pointIdx].assignedClusterIdx = cluster.index;
 	}
 
 	void printClusters()
