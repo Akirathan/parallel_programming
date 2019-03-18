@@ -7,27 +7,28 @@ SERIAL_EXE = "serial/k-means_serial"
 PARALLEL_EXE = "cmake-build-debug/k_means"
 DEBUG = False
 EXIT_AFTER_FIRST_FAIL = False
+RUN_JUST_PARALLEL = False
 
 TEST_INPUTS = [
 {
-	"points_file": "data/01-256k",
-	"k": "4",
-	"iters": "4"
-},
-{
-	"points_file": "data/01-256k",
-	"k": "32",
-	"iters": "32"
-},
-{
-	"points_file": "data/01-256k",
+	"points_file": "data/02-1M",
 	"k": "128",
-	"iters": "64"
+	"iters": "10"
 },
 {
 	"points_file": "data/02-1M",
-	"k": "32",
+	"k": "128",
 	"iters": "32"
+},
+{
+	"points_file": "data/02-1M",
+	"k": "128",
+	"iters": "128"
+},
+{
+	"points_file": "data/02-1M",
+	"k": "128",
+	"iters": "256"
 }]
 
 SERIAL_CENTROIDS_FILE = "data/serial_centroids"
@@ -62,7 +63,6 @@ def run_serial(test_input):
 	if DEBUG:
 		args = [SERIAL_EXE, "-debug", test_input["points_file"], test_input["k"], test_input["iters"], SERIAL_CENTROIDS_FILE, SERIAL_ASSIGN_FILE]
 
-	print(f"Running serial...")
 	subprocess.run(args)
 
 
@@ -71,9 +71,11 @@ def run_parallel(test_input):
 	if DEBUG:
 		args = [PARALLEL_EXE, "-debug", test_input["points_file"], test_input["k"], test_input["iters"], PARALLEL_CENTROIDS_FILE, PARALLEL_ASSIGN_FILE]
 
-	print(f"Running parallel...")
 	subprocess.run(args)
 
+def run_just_parallel(test_input):
+	print_heading(f"Running parallel {test_input} ...")
+	run_parallel(test_input)
 
 def print_heading(heading: str):
 	print("================================")
@@ -82,7 +84,9 @@ def print_heading(heading: str):
 
 def run_test(test_input):
 	print_heading(f"Running test {test_input} ...")
+	print("Running serial...")
 	run_serial(test_input)
+	print("Running parallel...")
 	run_parallel(test_input)
 	test_succ = True
 	if not compare_files(PARALLEL_CENTROIDS_FILE, SERIAL_CENTROIDS_FILE):
@@ -101,5 +105,8 @@ def run_test(test_input):
 	
 check_exes()
 for test_input in TEST_INPUTS:
-	run_test(test_input)
+	if RUN_JUST_PARALLEL:
+		run_just_parallel(test_input)
+	else:
+		run_test(test_input)
 	
