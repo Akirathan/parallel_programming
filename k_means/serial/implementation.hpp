@@ -7,7 +7,7 @@
 
 
 template<typename POINT = point_t, typename ASGN = std::uint8_t, bool DEBUG = false>
-class KMeans : public IKMeans<POINT, ASGN, DEBUG>
+class SerialKMeans : public IKMeans<POINT, ASGN, DEBUG>
 {
 private:
 	typedef typename POINT::coord_t coord_t;
@@ -20,6 +20,7 @@ private:
 	{
 		std::int64_t dx = (std::int64_t)point.x - (std::int64_t)centroid.x;
 		std::int64_t dy = (std::int64_t)point.y - (std::int64_t)centroid.y;
+		// We do not have to count sqrt here.
 		return (coord_t)(dx*dx + dy*dy);
 	}
 
@@ -82,7 +83,8 @@ public:
 				sums[i].x = sums[i].y = 0;
 				counts[i] = 0;
 			}
-			
+
+			// Assign every point to nearest cluster.
 			for (std::size_t i = 0; i < points.size(); ++i) {
 				std::size_t nearest = getNearestCluster(points[i], centroids);
 				assignments[i] = (ASGN)nearest;
@@ -91,6 +93,7 @@ public:
 				++counts[nearest];
 			}
 
+			// Compute new centroids for every cluster.
 			for (std::size_t i = 0; i < k; ++i) {
 				if (counts[i] == 0) continue;	// If the cluster is empty, keep its previous centroid.
 				centroids[i].x = sums[i].x / (std::int64_t)counts[i];

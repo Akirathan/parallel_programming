@@ -100,7 +100,7 @@ void runKmeans(const std::vector<point_t> &points, std::size_t k, std::size_t it
 	std::vector<point_t> &centroids, std::vector<std::uint8_t> &assignments)
 {
 	// Initialize distance functor.
-	KMeans<point_t, std::uint8_t, DEBUG> kMeans;
+	SerialKMeans<point_t, std::uint8_t, DEBUG> kMeans;
 	kMeans.init(points.size(), k, iters);
 	
 	// Preallocate results.
