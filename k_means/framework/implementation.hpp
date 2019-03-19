@@ -15,24 +15,6 @@ static const size_t MAX_CLUSTER_COUNT = 256;
 static const size_t POINTS_GRAIN_SIZE = 1024;
 static const size_t CLUSTERS_GRAIN_SIZE = 16;
 
-/**
- *
- * @tparam T
- * @param sourceVector The second half of this vector will be moved to destVector
- * @param destVector
- */
-template<typename T>
-void half_split_vector(std::vector<T> &sourceVector, std::vector<T> &destVector)
-{
-	auto beginIt = sourceVector.begin();
-	auto middleIt = beginIt + sourceVector.size()/2;
-	auto endIt = sourceVector.end();
-
-	destVector.insert(destVector.begin(), middleIt, endIt);
-	sourceVector.erase(middleIt, endIt);
-}
-
-
 struct PointWithAssignment: public point_t {
     size_t idx;
 	size_t assignedClusterIdx;
@@ -49,40 +31,6 @@ struct PointWithAssignment: public point_t {
         : PointWithAssignment(0, {0, 0})
 	{}
 };
-
-
-class PointRange {
-public:
-	PointRange(const std::vector<PointWithAssignment> &points)
-		: points(points)
-	{
-	}
-
-	PointRange(PointRange &otherRange, tbb::split)
-	{
-		assert(points.empty());
-		half_split_vector(otherRange.points, points);
-	}
-
-	const std::vector<PointWithAssignment> & get_points() const
-	{
-		return points;
-	}
-
-	bool is_divisible() const
-	{
-		return points.size() > POINTS_GRAIN_SIZE;
-	}
-
-	bool empty() const
-	{
-		return points.empty();
-	}
-
-private:
-	std::vector<PointWithAssignment> points;
-};
-
 
 template<typename POINT=point_t>
 struct Cluster {
@@ -119,8 +67,7 @@ public:
 	 */
 	virtual void init(std::size_t points, std::size_t k, std::size_t iters)
 	{
-		this->k = k;
-		this->iters = iters;
+        this->k = k;
 	}
 
 
@@ -154,7 +101,6 @@ public:
 		    iters--;
 		    bool finalIteration = iters == 0;
 
-		    resetBeforeIteration();
 			SumCountArrays arrays = computePointsAssignment(finalIteration);
 			computeNewCentroids(arrays);
 		}
@@ -165,7 +111,6 @@ public:
 private:
 	using coord_t = typename POINT::coord_t;
 	size_t k;
-	size_t iters;
 	std::vector<PointWithAssignment> points;
 	std::vector<ASGN> *assignments;
 	std::vector<Cluster<POINT>> clusters;
@@ -197,11 +142,6 @@ private:
 		centroids.resize(k);
 	}
 
-	void resetBeforeIteration()
-	{
-	    // TODO
-	}
-
 	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
 	{
 		assignments = *this->assignments;
@@ -215,34 +155,35 @@ private:
 	// First part of the algorithm -- assign all the points to nearest cluster.
 	SumCountArrays computePointsAssignment(bool finalIteration)
 	{
-		PointRange pointRange(points);
 		SumCountArrays initArrays;
 
 		SumCountArrays finalArrays =
-            tbb::parallel_reduce(pointRange, initArrays,
-                [&](const PointRange &range, SumCountArrays arrays) -> SumCountArrays {
-                    for (const PointWithAssignment &point : range.get_points()) {
-                        Cluster<POINT> &nearestCluster = getNearestCluster(point);
+            tbb::parallel_reduce(
+            		tbb::blocked_range<size_t>(0, points.size(), POINTS_GRAIN_SIZE),
+                    SumCountArrays(),
+                    [&](const tbb::blocked_range<size_t> &range, SumCountArrays arrays) -> SumCountArrays {
+                        for (size_t i = range.begin(); i != range.end(); i++) {
+                            Cluster<POINT> &nearestCluster = getNearestCluster(points[i]);
 
-                        if (finalIteration) {
-							assignPointIdxToCluster(point.idx, nearestCluster);
+                            if (finalIteration) {
+                                assignPointIdxToCluster(i, nearestCluster);
+                            }
+
+                            arrays.counts[nearestCluster.index]++;
+                            arrays.sums[nearestCluster.index].x += points[i].x;
+                            arrays.sums[nearestCluster.index].y += points[i].y;
                         }
-
-                        arrays.counts[nearestCluster.index]++;
-                        arrays.sums[nearestCluster.index].x += point.x;
-                        arrays.sums[nearestCluster.index].y += point.y;
+                        return arrays;
+                    },
+                    [](const SumCountArrays &arrays1, const SumCountArrays &arrays2) -> SumCountArrays {
+                        SumCountArrays resArrays;
+                        for (size_t i = 0; i < arrays1.sums.max_size(); i++) {
+                            resArrays.sums[i].x = arrays1.sums[i].x + arrays2.sums[i].x;
+                            resArrays.sums[i].y = arrays1.sums[i].y + arrays2.sums[i].y;
+                            resArrays.counts[i] = arrays1.counts[i] + arrays2.counts[i];
+                        }
+                        return resArrays;
                     }
-                    return arrays;
-                },
-                [](SumCountArrays arrays1, SumCountArrays arrays2) -> SumCountArrays {
-                    SumCountArrays resArrays;
-                    for (size_t i = 0; i < arrays1.sums.max_size(); i++) {
-                        resArrays.sums[i].x = arrays1.sums[i].x + arrays2.sums[i].x;
-                        resArrays.sums[i].y = arrays1.sums[i].y + arrays2.sums[i].y;
-                        resArrays.counts[i] = arrays1.counts[i] + arrays2.counts[i];
-                    }
-                    return resArrays;
-                }
             );
 
 		if (DEBUG) {
@@ -273,7 +214,7 @@ private:
 	{
 		coord_t minDist = distance(point, clusters[0].centroid);
 		size_t nearestIdx = 0;
-		for (std::size_t i = 1; i < clusters.size(); ++i) {
+		for (std::size_t i = 1; i < k; ++i) {
 			coord_t dist = distance(point, clusters[i].centroid);
 			if (dist < minDist) {
 				minDist = dist;
