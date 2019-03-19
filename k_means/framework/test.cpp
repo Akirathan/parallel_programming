@@ -25,6 +25,7 @@ static void other_test();
 static void rnd_test();
 static void big_tests();
 static void file_test();
+static void only_parallel_test();
 static void _load_file(const std::string &fileName, std::vector<point_t> &res);
 
 static std::vector<std::function<void(void)>> tests {
@@ -36,17 +37,26 @@ static std::vector<std::function<void(void)>> tests {
 };
 
 const static bool debugOutput = false;
+const static bool onlyParallel = false;
 
 
 int main()
 {
     //test_two_parrallel_fors();
 
-    for (const auto &test : tests) {
-        test();
+    if (onlyParallel) {
+        only_parallel_test();
+
+        std::cerr << "Only parallel run finished" << std::endl;
+    }
+    else {
+        for (const auto &test : tests) {
+            test();
+        }
+
+        std::cerr << "All tests passed" << std::endl;
     }
 
-    std::cerr << "All tests passed" << std::endl;
 }
 
 std::vector<point_t> generate_random_points(size_t count)
@@ -79,6 +89,17 @@ void sample_test()
     assert(assignments[1] == assignments[2] && assignments[2] == assignments[3]);
     assert(centroids[0].x == 1 && centroids[0].y == 2);
     assert(centroids[1].x == 5 && centroids[1].y == 6);
+}
+
+void only_parallel_test()
+{
+    size_t k = 32;
+    size_t iters = 100;
+
+    std::vector<point_t> points = generate_random_points(500 * 1024);
+    std::vector<point_t> centroids;
+    std::vector<uint8_t> assignments;
+    run_parallel(k, iters, points, centroids, assignments);
 }
 
 void other_test()
