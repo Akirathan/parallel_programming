@@ -142,21 +142,9 @@ private:
 		centroids.resize(k);
 	}
 
-	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
-	{
-		assignments = *this->assignments;
-
-		for (size_t i = 0; i < clusters.size(); i++) {
-			centroids[i].x = clusters[i].centroid.x;
-			centroids[i].y = clusters[i].centroid.y;
-		}
-	}
-
 	// First part of the algorithm -- assign all the points to nearest cluster.
 	SumCountArrays computePointsAssignment(bool finalIteration)
 	{
-		SumCountArrays initArrays;
-
 		SumCountArrays finalArrays =
             tbb::parallel_reduce(
             		tbb::blocked_range<size_t>(0, points.size(), POINTS_GRAIN_SIZE),
@@ -196,7 +184,6 @@ private:
 
 	void computeNewCentroids(const SumCountArrays &arrays)
 	{
-		// Compute new centroids
 		tbb::parallel_for(tbb::blocked_range<size_t>(0, k, CLUSTERS_GRAIN_SIZE),
             [&](const tbb::blocked_range<size_t> &range) {
                 for (size_t i = range.begin(); i != range.end(); i++) {
@@ -229,13 +216,22 @@ private:
 	{
 		std::int64_t dx = (std::int64_t)point.x - (std::int64_t)centroid.x;
 		std::int64_t dy = (std::int64_t)point.y - (std::int64_t)centroid.y;
-		// We do not have to count sqrt here.
 		return (coord_t)(dx*dx + dy*dy);
 	}
 
 	void assignPointIdxToCluster(const size_t pointIdx, const Cluster<POINT> &cluster)
 	{
 		(*assignments)[pointIdx] = static_cast<ASGN>(cluster.index);
+	}
+
+	void constructOutput(std::vector<POINT> &centroids, std::vector<ASGN> &assignments)
+	{
+		assignments = *this->assignments;
+
+		for (size_t i = 0; i < clusters.size(); i++) {
+			centroids[i].x = clusters[i].centroid.x;
+			centroids[i].y = clusters[i].centroid.y;
+		}
 	}
 
 	void printClusters()
