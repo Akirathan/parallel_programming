@@ -19,6 +19,7 @@ set(SOURCES
         internal/serial.hpp
         internal/stopwatch.hpp
         internal/verifier.hpp
+        internal/interface.hpp
         implementation.hpp
         kernels.h
         kernels.cu
