@@ -67,7 +67,7 @@ inline void print_device_properties()
 
     std::cout << "Device properties:" << std::endl;
     std::cout << "\tName: " << properties.name << std::endl;
-    std::cout << "\tCompute capability:" << properties.major << "." << properties.minor << std::endl;
+    std::cout << "\tCompute capability: " << properties.major << "." << properties.minor << std::endl;
     std::cout << "\tMax threads per block: " << properties.maxThreadsPerBlock << std::endl;
     std::cout << "\tIntegrated: " << properties.integrated << std::endl;
 }

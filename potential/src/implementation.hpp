@@ -59,8 +59,9 @@ public:
 	}
 
 
-    /*
+    /**
      * Perform one iteration of the simulation and update positions of the points.
+     * @param points These points may be cached on GPU.
      */
 	void iteration(std::vector<point_t> &points) override
 	{
@@ -70,12 +71,13 @@ public:
 	}
 
 
+    /**
+     * Retrieve the velocities buffer from the GPU.
+     * This operation is for vreification only and it does not have to be efficient.
+     */
 	void getVelocities(std::vector<point_t> &velocities) override
 	{
-		/*
-		 * Retrieve the velocities buffer from the GPU.
-		 * This operation is for vreification only and it does not have to be efficient.
-		 */
+
 	}
 };
 
