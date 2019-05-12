@@ -83,7 +83,11 @@ public:
 	{
 	    CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
 
-		run_compute_repulsive(mCuPoints, points.size(), mCuForces);
+		run_compute_repulsive(mCuPoints, points.size(), mCuTmpRepulsiveForces, Base::mParams.vertexRepulsion);
+		if (Base::mVerbose) {
+		    std::cout << "Printing repulsive forces matrix:" << std::endl;
+		    printCudaMatrix(mCuTmpRepulsiveForces, points.size());
+		}
 	}
 
 

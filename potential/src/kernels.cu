@@ -31,7 +31,7 @@ static __global__ void print_thread_idx(int *dest, size_t size)
 	dest[idx] = 23;
 }
 
-static __global__ void compute_repulsive(const Point<double> *points, Point<double> *forces,
+static __global__ void compute_repulsive(const Point<double> *points, Point<double> **repulsive_forces_matrix,
         size_t points_size, double vertexRepulsion)
 {
     size_t i = threadIdx.x;
@@ -46,18 +46,33 @@ static __global__ void compute_repulsive(const Point<double> *points, Point<doub
         dx *= fact;
         dy *= fact;
 
-        /*auto pointI = forces[i].load();
-        pointI.x += dx;
-        pointI.y += dy;
-        forces[i].store(pointI);*/
+        repulsive_forces_matrix[i][j].x += dx;
+        repulsive_forces_matrix[i][j].y += dy;
 
-        //atomicAdd(&forces[i].x, dx);
-
-        /*auto pointJ = forces[j].load();
-        pointJ.x -= dx;
-        pointJ.y -= dy;
-        forces[j].store(pointJ);*/
+        repulsive_forces_matrix[j][i].x -= dx;
+        repulsive_forces_matrix[j][i].y -= dy;
     }
+}
+
+static __global__ void compute_compulsive(const Point<double> *points, size_t points_size, const Edge<uint32_t> *edges,
+        size_t edges_size, uint32_t length, Point<double> **forces, double edgeCompulsion)
+{
+    /*size_t i = threadIdx.x;
+    size_t j = threadIdx.y;
+    assert(i < points_size && j < points_size);
+
+    double dx = points[i].x - points[j].x;
+    double dy = points[i].y - points[j].y;
+    double sqLen = dx*dx + dy*dy;
+    double fact = (double)std::sqrt(sqLen) * edgeCompulsion / (double)(length);
+    dx *= fact;
+    dy *= fact;
+
+    forces[j][i].x += dx;
+    forces[j][i].y += dy;
+
+    forces[i][j].x -= dx;
+    forces[i][j].y -= dy;*/
 }
 
 /*
@@ -81,8 +96,9 @@ void run_print_thread_idx(int *dest, size_t size)
 	print_thread_idx<<<1, size>>>(dest, size);
 }
 
-void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *forces,
+void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> **repulsive_forces_matrix,
         double vertexRepulsion)
 {
-    compute_repulsive<<<1, dim3{point_size, point_size, 1}>>>(points, forces, point_size, vertexRepulsion);
+    compute_repulsive<<<1, dim3{(unsigned)point_size, (unsigned)point_size, 1}>>>
+        (points, repulsive_forces_matrix, point_size, vertexRepulsion);
 }
