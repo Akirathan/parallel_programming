@@ -31,6 +31,8 @@ private:
     edge_t *mCuEdges;
     length_t *mCuLengths;
 
+    point_t **mCuTmpRepulsiveForces;
+    size_t mCuTmpRepulsiveForcesSize;
 
 public:
     ~ProgramPotential() override
@@ -39,6 +41,10 @@ public:
         assert(cudaFree(mCuForces) == cudaSuccess);
         assert(cudaFree(mCuEdges) == cudaSuccess);
         assert(cudaFree(mCuLengths) == cudaSuccess);
+
+        for (size_t i = 0; i < mCuTmpRepulsiveForcesSize; ++i)
+            assert(cudaFree(&mCuTmpRepulsiveForces[i]) == cudaSuccess);
+        assert(cudaFree(mCuTmpRepulsiveForces) == cudaSuccess);
     }
 
 	void initialize(index_t points, const std::vector<edge_t>& edges, const std::vector<length_t> &lengths, index_t iterations) override
@@ -51,6 +57,14 @@ public:
         CUCH(cudaMalloc((void **) &mCuForces, points * sizeof(point_t)));
 		CUCH(cudaMalloc((void **) &mCuEdges, edges.size() * sizeof(edge_t)));
 		CUCH(cudaMalloc((void **) &mCuLengths, lengths.size() * sizeof(length_t)));
+
+		mCuTmpRepulsiveForcesSize = points;
+		// Allocate row of pointers (columns).
+		CUCH(cudaMalloc((void **) &mCuTmpRepulsiveForces, mCuTmpRepulsiveForcesSize * sizeof(point_t *)));
+		for (size_t row_idx = 0; row_idx < mCuTmpRepulsiveForcesSize; row_idx++) {
+		    // Allocate inner pointer (one row).
+		    CUCH(cudaMalloc(&mCuTmpRepulsiveForces[row_idx], mCuTmpRepulsiveForcesSize * sizeof(point_t)));
+		}
 
         CUCH(cudaMemset(mCuPoints, 0.0, points * sizeof(point_t)));
         CUCH(cudaMemset(mCuForces, 0.0, points * sizeof(point_t)));
