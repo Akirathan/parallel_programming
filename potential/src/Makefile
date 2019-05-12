@@ -1,6 +1,7 @@
 CPP=g++17
 NVCC=/usr/local/cuda/bin/nvcc
-CFLAGS=-Wall -O3 -std=c++17
+OPTIMALIZATIONS =
+CFLAGS = -Wall -std=c++17 -g $(OPTIMALIZATIONS)
 INCLUDE=/usr/local/cuda/include ./internal .
 LDFLAGS=
 LIBS=
@@ -38,6 +39,7 @@ FILES = \
 
 PROJECT_DIR = "/mnt/home/s_bruchpa/potential/src"
 PARTITION = volta-lp
+SRUN_CMD = srun -p $(PARTITION) --gres=gpu:1
 SSH_CMD = ssh gpulab
 ARGS = -verify -verbose ~/potential/data/debug-v64-e256.gbf
 
@@ -46,11 +48,14 @@ send_files:
 	@scp -r -P 42222 $(FILES) "s_bruchpa@gpulab.ms.mff.cuni.cz:$(PROJECT_DIR)"
 
 compile: send_files
-	@$(SSH_CMD) "cd $(PROJECT_DIR); srun -p $(PARTITION) --gres=gpu:1 make"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) make"
 
 run:
-	@$(SSH_CMD) "cd $(PROJECT_DIR); srun -p $(PARTITION) --gres=gpu:1 $(TARGET) $(ARGS)"
-	
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(TARGET) $(ARGS)"
+
+debug:
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) gdb --args $(TARGET) $(ARGS)"
+
 
 
 # Cleaning Stuff
