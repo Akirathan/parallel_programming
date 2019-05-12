@@ -6,8 +6,8 @@ LDFLAGS=
 LIBS=
 LIBDIRS=/usr/local/cuda/lib64
 HEADERS=$(shell find . -name '*.hpp')
-#TARGET=potential
-TARGET=try
+TARGET=potential
+#TARGET=try
 
 
 .PHONY: all clear clean purge
@@ -39,7 +39,7 @@ FILES = \
 PROJECT_DIR = "/mnt/home/s_bruchpa/potential/src"
 PARTITION = volta-lp
 SSH_CMD = ssh gpulab
-ARGS = 
+ARGS = -verify -verbose ~/potential/data/debug-v64-e256.gbf
 
 send_files:
 	@echo "Sending files..."
@@ -49,7 +49,7 @@ compile: send_files
 	@$(SSH_CMD) "cd $(PROJECT_DIR); srun -p $(PARTITION) --gres=gpu:1 make"
 
 run:
-	@$(SSH_CMD) "cd $(PROJECT_DIR); srun -p $(PARTITION) --gres=gpu:1 $(TARGET)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); srun -p $(PARTITION) --gres=gpu:1 $(TARGET) $(ARGS)"
 	
 
 
