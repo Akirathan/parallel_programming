@@ -26,6 +26,8 @@ public:
 	typedef Edge<index_t> edge_t;
 
 private:
+    using Base = IProgramPotential<F, IDX_T, LEN_T>;
+
     point_t *mCuPoints;
     point_t *mCuForces;
     edge_t *mCuEdges;
@@ -93,7 +95,37 @@ public:
 	{
 
 	}
+
+private:
+    template <typename T>
+    void printCudaMatrix(T **cuda_matrix, size_t matrix_size) const
+    {
+        point_t **tmp_matrix = new point_t*[matrix_size];
+        for (size_t i = 0; i < matrix_size; ++i)
+            tmp_matrix[i] = new point_t[matrix_size];
+
+        for (size_t row_idx = 0; row_idx < matrix_size; row_idx++) {
+            CUCH(cudaMemcpy(&cuda_matrix[row_idx], &tmp_matrix[row_idx], matrix_size * sizeof(point_t),
+                            cudaMemcpyDeviceToHost));
+        }
+
+        // Print matrix
+        for (size_t i = 0; i < matrix_size; i++) {
+            for (size_t j = 0; j < matrix_size; j++)
+                std::cout << tmp_matrix[i][j] << " ";
+            std::cout << std::endl;
+        }
+
+        for (size_t i = 0; i < matrix_size; ++i)
+            delete[] tmp_matrix[i];
+        delete[] tmp_matrix;
+    }
 };
+
+std::ostream & operator<<(std::ostream &output, const Point<double> &point)
+{
+    return output << "(" << point.x << "," << point.y << ")";
+}
 
 
 #endif
