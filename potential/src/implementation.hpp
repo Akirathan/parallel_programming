@@ -29,6 +29,7 @@ private:
     using Base = IProgramPotential<F, IDX_T, LEN_T>;
 
     point_t *mCuPoints;
+    size_t mPointsSize;
     point_t *mCuForces;
     point_t *mCuVelocities;
     point_t *mCuRepulsiveForces;
@@ -37,6 +38,7 @@ private:
     size_t mEdgesSize;
     length_t *mCuLengths;
     size_t mLengthsSize;
+    bool mFirstIteration = true;
 
 public:
     ~ProgramPotential() override
@@ -56,6 +58,7 @@ public:
 		 * Initialize your implementation.
 		 * Allocate/initialize buffers, transfer initial data to GPU...
 		 */
+		mPointsSize = points;
 		mEdgesSize = edges.size();
 		mLengthsSize = lengths.size();
 
@@ -86,30 +89,37 @@ public:
      */
 	void iteration(std::vector<point_t> &points) override
 	{
-	    CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
+        if (mFirstIteration)
+            CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
 
-		run_compute_repulsive(mCuPoints, points.size(), mCuRepulsiveForces, Base::mParams.vertexRepulsion);
-		if (Base::mVerbose) {
-		    std::cout << "Printing repulsive forces:" << std::endl;
+        run_compute_repulsive(mCuPoints, points.size(), mCuRepulsiveForces, Base::mParams.vertexRepulsion);
+        if (Base::mVerbose) {
+            std::cout << "Printing repulsive forces:" << std::endl;
             printCudaArray(mCuRepulsiveForces, points.size());
-		}
+        }
 
-		run_compute_compulsive(mCuPoints, points.size(), mCuEdges, mEdgesSize, mCuLengths, mLengthsSize,
-		        mCuForces, Base::mParams.edgeCompulsion);
-		if (Base::mVerbose) {
-		    std::cout << "Printing compulsive forces:" << std::endl;
-		    printCudaArray(mCuForces, points.size());
-		}
+        run_compute_compulsive(mCuPoints, points.size(), mCuEdges, mEdgesSize, mCuLengths, mLengthsSize,
+                               mCuForces, Base::mParams.edgeCompulsion);
+        if (Base::mVerbose) {
+            std::cout << "Printing compulsive forces:" << std::endl;
+            printCudaArray(mCuForces, points.size());
+        }
 
-		// TODO: barrier
+        CUCH(cudaDeviceSynchronize());
 
-		run_array_sum(mCuForces, mCuRepulsiveForces, points.size());
-		// TODO: barrier
-		run_update_velocities(mCuVelocities, mCuForces, points.size(), Base::mParams);
-        // TODO: barrier
-		run_update_point_positions(mCuPoints, points.size(), mCuVelocities, Base::mParams);
+        run_array_sum(mCuForces, mCuRepulsiveForces, points.size());
 
-		CUCH(cudaMemcpy(points.data(), mCuPoints, points.size() * sizeof(point_t), cudaMemcpyDeviceToHost));
+        CUCH(cudaDeviceSynchronize());
+
+        run_update_velocities(mCuVelocities, mCuForces, points.size(), Base::mParams);
+
+        CUCH(cudaDeviceSynchronize());
+
+        run_update_point_positions(mCuPoints, points.size(), mCuVelocities, Base::mParams);
+
+        copyCudaArrayToVector(points, mCuPoints, mPointsSize);
+
+        mFirstIteration = false;
 	}
 
 
@@ -119,7 +129,7 @@ public:
      */
 	void getVelocities(std::vector<point_t> &velocities) override
 	{
-
+        copyCudaArrayToVector(velocities, mCuVelocities, mPointsSize);
 	}
 
 private:
@@ -135,6 +145,18 @@ private:
         std::cout << std::endl;
 
         delete[] tmp_array;
+    }
+
+    template <typename T>
+    void copyCudaArrayToVector(std::vector<T> &vec, T *cuda_array, size_t size) const
+    {
+	    T *tmp_array = new T[size];
+
+        CUCH(cudaMemcpy(tmp_array, cuda_array, size * sizeof(T), cudaMemcpyDeviceToHost));
+	    vec.clear();
+	    vec.insert(vec.begin(), tmp_array, tmp_array + size);
+
+	    delete[] tmp_array;
     }
 };
 
