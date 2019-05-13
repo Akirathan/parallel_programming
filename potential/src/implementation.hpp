@@ -33,7 +33,7 @@ private:
     edge_t *mCuEdges;
     length_t *mCuLengths;
 
-    point_t **mCuTmpRepulsiveForces;
+    point_t *mCuTmpRepulsiveForces;
     size_t mCuTmpRepulsiveForcesSize;
 
 public:
@@ -43,9 +43,6 @@ public:
         assert(cudaFree(mCuForces) == cudaSuccess);
         assert(cudaFree(mCuEdges) == cudaSuccess);
         assert(cudaFree(mCuLengths) == cudaSuccess);
-
-        for (size_t i = 0; i < mCuTmpRepulsiveForcesSize; ++i)
-            assert(cudaFree(&mCuTmpRepulsiveForces[i]) == cudaSuccess);
         assert(cudaFree(mCuTmpRepulsiveForces) == cudaSuccess);
     }
 
@@ -60,18 +57,19 @@ public:
 		CUCH(cudaMalloc((void **) &mCuEdges, edges.size() * sizeof(edge_t)));
 		CUCH(cudaMalloc((void **) &mCuLengths, lengths.size() * sizeof(length_t)));
 
-		mCuTmpRepulsiveForcesSize = points;
-		// Allocate row of pointers (columns).
-		CUCH(cudaMalloc((void **) &mCuTmpRepulsiveForces, mCuTmpRepulsiveForcesSize * sizeof(point_t *)));
-		for (size_t row_idx = 0; row_idx < mCuTmpRepulsiveForcesSize; row_idx++) {
-		    // Allocate inner pointer (one row).
-		    CUCH(cudaMalloc(&mCuTmpRepulsiveForces[row_idx], mCuTmpRepulsiveForcesSize * sizeof(point_t)));
-		}
+		mCuTmpRepulsiveForcesSize = points * points;
+		CUCH(cudaMalloc((void **) &mCuTmpRepulsiveForces, mCuTmpRepulsiveForcesSize * sizeof(point_t)));
+		if (Base::mVerbose)
+		    std::cout << "repulsive_forces_size = " << mCuTmpRepulsiveForcesSize << std::endl;
 
         CUCH(cudaMemset(mCuPoints, 0.0, points * sizeof(point_t)));
         CUCH(cudaMemset(mCuForces, 0.0, points * sizeof(point_t)));
+        CUCH(cudaMemset(mCuTmpRepulsiveForces, 0.0, mCuTmpRepulsiveForcesSize * sizeof(point_t)));
 		CUCH(cudaMemcpy(mCuEdges, edges.data(), edges.size() * sizeof(edge_t), cudaMemcpyHostToDevice));
 		CUCH(cudaMemcpy(mCuLengths, lengths.data(), lengths.size() * sizeof(length_t), cudaMemcpyHostToDevice));
+
+		if (Base::mVerbose)
+		    std::cout << "initialization done" << std::endl;
 	}
 
 
@@ -102,26 +100,18 @@ public:
 
 private:
     template <typename T>
-    void printCudaMatrix(T **cuda_matrix, size_t matrix_size) const
+    void printCudaMatrix(T *cuda_matrix, size_t row_size) const
     {
-        point_t **tmp_matrix = new point_t*[matrix_size];
-        for (size_t i = 0; i < matrix_size; ++i)
-            tmp_matrix[i] = new point_t[matrix_size];
-
-        for (size_t row_idx = 0; row_idx < matrix_size; row_idx++) {
-            CUCH(cudaMemcpy(&cuda_matrix[row_idx], &tmp_matrix[row_idx], matrix_size * sizeof(point_t),
-                            cudaMemcpyDeviceToHost));
-        }
+        point_t *tmp_matrix = new point_t[row_size * row_size];
+        CUCH(cudaMemcpy(tmp_matrix, cuda_matrix, row_size * row_size * sizeof(point_t), cudaMemcpyDeviceToHost));
 
         // Print matrix
-        for (size_t i = 0; i < matrix_size; i++) {
-            for (size_t j = 0; j < matrix_size; j++)
-                std::cout << tmp_matrix[i][j] << " ";
+        for (size_t i = 0; i < row_size; i++) {
+            for (size_t j = 0; j < row_size; j++)
+                std::cout << tmp_matrix[i * row_size + j] << " ";
             std::cout << std::endl;
         }
 
-        for (size_t i = 0; i < matrix_size; ++i)
-            delete[] tmp_matrix[i];
         delete[] tmp_matrix;
     }
 };

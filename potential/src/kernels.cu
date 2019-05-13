@@ -31,11 +31,12 @@ static __global__ void print_thread_idx(int *dest, size_t size)
 	dest[idx] = 23;
 }
 
-static __global__ void compute_repulsive(const Point<double> *points, Point<double> **repulsive_forces_matrix,
+static __global__ void compute_repulsive(const Point<double> *points, Point<double> *repulsive_forces_matrix,
         size_t points_size, double vertexRepulsion)
 {
     size_t i = threadIdx.x;
     size_t j = threadIdx.y;
+    const size_t row_size = points_size;
     assert(i < points_size && j < points_size);
 
     if (i < j) {
@@ -46,11 +47,11 @@ static __global__ void compute_repulsive(const Point<double> *points, Point<doub
         dx *= fact;
         dy *= fact;
 
-        repulsive_forces_matrix[i][j].x += dx;
-        repulsive_forces_matrix[i][j].y += dy;
+        repulsive_forces_matrix[i * row_size + j].x += dx;
+        repulsive_forces_matrix[i * row_size + j].y += dy;
 
-        repulsive_forces_matrix[j][i].x -= dx;
-        repulsive_forces_matrix[j][i].y -= dy;
+        repulsive_forces_matrix[j * row_size + i].x -= dx;
+        repulsive_forces_matrix[j * row_size + i].y -= dy;
     }
 }
 
@@ -96,7 +97,7 @@ void run_print_thread_idx(int *dest, size_t size)
 	print_thread_idx<<<1, size>>>(dest, size);
 }
 
-void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> **repulsive_forces_matrix,
+void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces_matrix,
         double vertexRepulsion)
 {
     compute_repulsive<<<1, dim3{(unsigned)point_size, (unsigned)point_size, 1}>>>
