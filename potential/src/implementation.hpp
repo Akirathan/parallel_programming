@@ -30,11 +30,12 @@ private:
 
     point_t *mCuPoints;
     point_t *mCuForces;
+    point_t *mCuRepulsiveForces;
+    point_t *mCuCompulsiveForces;
     edge_t *mCuEdges;
+    size_t mEdgesSize;
     length_t *mCuLengths;
-
-    point_t *mCuTmpRepulsiveForces;
-    size_t mCuTmpRepulsiveForcesSize;
+    size_t mLengthsSize;
 
 public:
     ~ProgramPotential() override
@@ -43,7 +44,8 @@ public:
         assert(cudaFree(mCuForces) == cudaSuccess);
         assert(cudaFree(mCuEdges) == cudaSuccess);
         assert(cudaFree(mCuLengths) == cudaSuccess);
-        assert(cudaFree(mCuTmpRepulsiveForces) == cudaSuccess);
+        assert(cudaFree(mCuRepulsiveForces) == cudaSuccess);
+        assert(cudaFree(mCuCompulsiveForces) == cudaSuccess);
     }
 
 	void initialize(index_t points, const std::vector<edge_t>& edges, const std::vector<length_t> &lengths, index_t iterations) override
@@ -52,19 +54,20 @@ public:
 		 * Initialize your implementation.
 		 * Allocate/initialize buffers, transfer initial data to GPU...
 		 */
+		mEdgesSize = edges.size();
+		mLengthsSize = lengths.size();
+
 		CUCH(cudaMalloc((void **) &mCuPoints, points * sizeof(point_t)));
         CUCH(cudaMalloc((void **) &mCuForces, points * sizeof(point_t)));
 		CUCH(cudaMalloc((void **) &mCuEdges, edges.size() * sizeof(edge_t)));
 		CUCH(cudaMalloc((void **) &mCuLengths, lengths.size() * sizeof(length_t)));
-
-		mCuTmpRepulsiveForcesSize = points * points;
-		CUCH(cudaMalloc((void **) &mCuTmpRepulsiveForces, mCuTmpRepulsiveForcesSize * sizeof(point_t)));
-		if (Base::mVerbose)
-		    std::cout << "repulsive_forces_size = " << mCuTmpRepulsiveForcesSize << std::endl;
+		CUCH(cudaMalloc((void **) &mCuRepulsiveForces, points * sizeof(point_t)));
+        CUCH(cudaMalloc((void **) &mCuCompulsiveForces, points * sizeof(point_t)));
 
         CUCH(cudaMemset(mCuPoints, 0.0, points * sizeof(point_t)));
         CUCH(cudaMemset(mCuForces, 0.0, points * sizeof(point_t)));
-        CUCH(cudaMemset(mCuTmpRepulsiveForces, 0.0, mCuTmpRepulsiveForcesSize * sizeof(point_t)));
+        CUCH(cudaMemset(mCuRepulsiveForces, 0.0, points * sizeof(point_t)));
+        CUCH(cudaMemset(mCuCompulsiveForces, 0.0, points * sizeof(point_t)));
 		CUCH(cudaMemcpy(mCuEdges, edges.data(), edges.size() * sizeof(edge_t), cudaMemcpyHostToDevice));
 		CUCH(cudaMemcpy(mCuLengths, lengths.data(), lengths.size() * sizeof(length_t), cudaMemcpyHostToDevice));
 
@@ -81,10 +84,17 @@ public:
 	{
 	    CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
 
-		run_compute_repulsive(mCuPoints, points.size(), mCuTmpRepulsiveForces, Base::mParams.vertexRepulsion);
+		run_compute_repulsive(mCuPoints, points.size(), mCuRepulsiveForces, Base::mParams.vertexRepulsion);
 		if (Base::mVerbose) {
-		    std::cout << "Printing repulsive forces matrix:" << std::endl;
-		    printCudaMatrix(mCuTmpRepulsiveForces, points.size());
+		    std::cout << "Printing repulsive forces:" << std::endl;
+            printCudaArray(mCuRepulsiveForces, points.size());
+		}
+
+		run_compute_compulsive(mCuPoints, points.size(), mCuEdges, mEdgesSize, mCuLengths, mLengthsSize,
+		        mCuCompulsiveForces, Base::mParams.edgeCompulsion);
+		if (Base::mVerbose) {
+		    std::cout << "Printing compulsive forces:" << std::endl;
+		    printCudaArray(mCuCompulsiveForces, points.size());
 		}
 	}
 
@@ -99,20 +109,18 @@ public:
 	}
 
 private:
+    // TODO: const T *cuda_array?
     template <typename T>
-    void printCudaMatrix(T *cuda_matrix, size_t row_size) const
+    void printCudaArray(T *cuda_array, size_t size) const
     {
-        point_t *tmp_matrix = new point_t[row_size * row_size];
-        CUCH(cudaMemcpy(tmp_matrix, cuda_matrix, row_size * row_size * sizeof(point_t), cudaMemcpyDeviceToHost));
+        point_t *tmp_array = new point_t[size];
+        CUCH(cudaMemcpy(tmp_array, cuda_array, size * sizeof(T), cudaMemcpyDeviceToHost));
 
-        // Print matrix
-        for (size_t i = 0; i < row_size; i++) {
-            for (size_t j = 0; j < row_size; j++)
-                std::cout << tmp_matrix[i * row_size + j] << " ";
-            std::cout << std::endl;
-        }
+        for (size_t i = 0; i < size; i++)
+            std::cout << tmp_array[i] << " ";
+        std::cout << std::endl;
 
-        delete[] tmp_matrix;
+        delete[] tmp_array;
     }
 };
 

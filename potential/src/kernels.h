@@ -81,6 +81,10 @@ void run_array_add(const float *array_1, const float *array_2, float *dest, size
 void run_print_thread_idx(int *dest, size_t size);
 void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces_matrix,
         double vertexRepulsion);
+void run_compute_compulsive(const Point<double> *points, size_t points_size,
+        const Edge<uint32_t> *edges, size_t edges_size,
+        const uint32_t *lengths, size_t length_size,
+        Point<double> *compulsive_forces_matrix, double edgeCompulsion);
 
 
 

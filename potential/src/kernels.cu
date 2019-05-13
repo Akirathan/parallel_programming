@@ -33,53 +33,51 @@ static __global__ void print_thread_idx(int *dest, size_t size)
 	dest[idx] = 23;
 }
 
-static __global__ void compute_repulsive(const Point<double> *points, Point<double> *repulsive_forces_matrix,
+static __global__ void compute_repulsive(const Point<double> *points, Point<double> *repulsive_forces,
         size_t points_size, double vertexRepulsion)
 {
-    const size_t row_size = points_size;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
-    size_t row = ((size_t)blockIdx.x * points_size / (size_t)blockDim.x) + threadIdx.x;
-    size_t col = 0;
+    assert(i < points_size && j < points_size);
 
-    assert(row < points_size && col < points_size);
-
-    std::printf("Row = %d, col = %d\n", row, col);
-
-    if (row < col) {
-        double dx = points[row].x - points[col].x;
-        double dy = points[row].y - points[col].y;
+    if (i < j) {
+        std::printf("\t\tKernel computing repulsive forces for i=%d, j=%d\n", i, j);
+        double dx = points[i].x - points[j].x;
+        double dy = points[i].y - points[j].y;
         double sqLen = dx*dx + dy*dy > (double)0.0001 ? dx*dx + dy*dy : (double)0.0001;
         double fact = vertexRepulsion / (sqLen * (double)std::sqrt(sqLen));	// mul factor
         dx *= fact;
         dy *= fact;
 
-        repulsive_forces_matrix[row * row_size + col].x += dx;
-        repulsive_forces_matrix[row * row_size + col].y += dy;
-
-        repulsive_forces_matrix[col * row_size + row].x -= dx;
-        repulsive_forces_matrix[col * row_size + row].y -= dy;
+        atomicAdd(&repulsive_forces[i].x, dx);
+        atomicAdd(&repulsive_forces[i].y, dy);
+        atomicAdd(&repulsive_forces[j].x, -dx);
+        atomicAdd(&repulsive_forces[j].y, -dy);
     }
 }
 
-static __global__ void compute_compulsive(const Point<double> *points, size_t points_size, const Edge<uint32_t> *edges,
-        size_t edges_size, uint32_t length, Point<double> **forces, double edgeCompulsion)
+static __global__ void compute_compulsive(const Point<double> *points, size_t points_size,
+        const Edge<uint32_t> *edges, size_t edges_size,
+        const uint32_t *lengths, size_t length_size,
+        Point<double> *compulsive_forces, double edgeCompulsion)
 {
-    /*size_t i = threadIdx.x;
-    size_t j = threadIdx.y;
-    assert(i < points_size && j < points_size);
+    size_t edge_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    assert(edge_idx < edges_size);
+    Edge<uint32_t> edge = edges[edge_idx];
+    assert(edge.p1 < points_size && edge.p2 < points_size);
 
-    double dx = points[i].x - points[j].x;
-    double dy = points[i].y - points[j].y;
+    double dx = points[edge.p2].x - points[edge.p1].x;
+    double dy = points[edge.p2].y - points[edge.p1].y;
     double sqLen = dx*dx + dy*dy;
-    double fact = (double)std::sqrt(sqLen) * edgeCompulsion / (double)(length);
+    double fact = (double)std::sqrt(sqLen) * edgeCompulsion / (double)(lengths[edge_idx]);
     dx *= fact;
     dy *= fact;
 
-    forces[j][i].x += dx;
-    forces[j][i].y += dy;
-
-    forces[i][j].x -= dx;
-    forces[i][j].y -= dy;*/
+    atomicAdd(&compulsive_forces[edge.p1].x, dx);
+    atomicAdd(&compulsive_forces[edge.p1].y, dy);
+    atomicAdd(&compulsive_forces[edge.p2].x, -dx);
+    atomicAdd(&compulsive_forces[edge.p2].y, -dy);
 }
 
 /*
@@ -103,25 +101,45 @@ void run_print_thread_idx(int *dest, size_t size)
 	print_thread_idx<<<1, size>>>(dest, size);
 }
 
-void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces_matrix,
+void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces,
         double vertexRepulsion)
 {
-    std::cout << "Running compute repulsive for (" << (unsigned)point_size << "," << (unsigned)point_size
-              << "," << "1) thread dimensions" << std::endl;
+    assert(point_size % 2 == 0);
 
-    dim3 blocks;
-    dim3 threads;
-    size_t matrix_size = point_size * point_size;
-    if (matrix_size > 1024) {
-
-    }
-    else {
-        blocks = dim3{1, 1, 1};
-        threads = dim3{(unsigned)point_size, (unsigned)point_size, 1};
+    dim3 blocks{1, 1, 1};
+    dim3 threads{(unsigned)point_size, (unsigned)point_size, 1};
+    while (threads.x * threads.y > 1024) {
+        blocks.x *= 2;
+        blocks.y *= 2;
+        threads.x /= 2; // TODO: integer division?
+        threads.y /= 2;
     }
 
-    compute_repulsive<<<blocks, threads>>>(points, repulsive_forces_matrix, point_size, vertexRepulsion);
+    std::cout << "Running compute repulsive kernel for blocks_dim=(" << blocks.x << "," << blocks.y << ","
+              << blocks.z << "), threads_dim=(" << threads.x << "," << threads.y << "," << threads.z
+              << ")." << std::endl;
+    compute_repulsive<<<blocks, threads>>>(points, repulsive_forces, point_size, vertexRepulsion);
 
     // Check if kernel was launched properly.
     CUCH(cudaGetLastError());
+}
+
+void run_compute_compulsive(const Point<double> *points, size_t points_size,
+                            const Edge<uint32_t> *edges, size_t edges_size,
+                            const uint32_t *lengths, size_t lengths_size,
+                            Point<double> *compulsive_forces_matrix, double edgeCompulsion)
+{
+    assert(edges_size % 2 == 0);
+
+    dim3 blocks{1, 1, 1};
+    dim3 threads{(unsigned)edges_size, 1, 1};
+    while (threads.x > 1024) {
+        blocks.x *= 2;
+        threads.x /= 2;
+    }
+    std::cout << "Running compute compulsive kernel for blocks_dim=(" << blocks.x << "," << blocks.y << ","
+              << blocks.z << "), threads_dim=(" << threads.x << "," << threads.y << "," << threads.z
+              << ")." << std::endl;
+    compute_compulsive<<<blocks, threads>>>
+        (points, points_size, edges, edges_size, lengths, lengths_size, compulsive_forces_matrix, edgeCompulsion);
 }
