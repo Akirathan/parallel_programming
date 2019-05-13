@@ -26,7 +26,7 @@ $(TARGET): $(TARGET).cpp $(HEADERS) kernels.obj
 
 kernels.obj: kernels.cu
 	@echo Compiling CUDA kernels "$@" ...
-	@$(NVCC) $(addprefix -I,$(INCLUDE)) -arch sm_70 --compile -cudart static $< -o $@
+	@$(NVCC) $(addprefix -I,$(INCLUDE)) -arch sm_70 -lineinfo --compile -cudart static $< -o $@
 
 
 FILES = \
@@ -42,6 +42,7 @@ PARTITION = volta-lp
 SRUN_CMD = srun -p $(PARTITION) --gres=gpu:1
 SSH_CMD = ssh gpulab
 ARGS = -verify -verbose ~/potential/data/debug-v64-e256.gbf
+CUCA_MEMCHECK = /usr/local/cuda/bin/cuda-memcheck
 
 send_files:
 	@echo "Sending files..."
@@ -55,6 +56,9 @@ run:
 
 debug:
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) gdb --args $(TARGET) $(ARGS)"
+
+memcheck:
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(CUDA_MEMCHECK) $(TARGET) $(ARGS)"
 
 
 
