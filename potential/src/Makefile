@@ -26,7 +26,7 @@ $(TARGET): $(TARGET).cpp $(HEADERS) kernels.obj
 
 kernels.obj: kernels.cu
 	@echo Compiling CUDA kernels "$@" ...
-	@$(NVCC) $(addprefix -I,$(INCLUDE)) --compile -cudart static $< -o $@
+	@$(NVCC) $(addprefix -I,$(INCLUDE)) -arch sm_70 --compile -cudart static $< -o $@
 
 
 FILES = \
