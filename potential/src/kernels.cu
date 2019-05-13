@@ -36,7 +36,6 @@ static __global__ void compute_repulsive(const Point<double> *points, Point<doub
     assert(i < points_size && j < points_size);
 
     if (i < j) {
-        std::printf("\t\tKernel computing repulsive forces for i=%d, j=%d\n", i, j);
         double dx = points[i].x - points[j].x;
         double dy = points[i].y - points[j].y;
         double sqLen = dx*dx + dy*dy > (double)0.0001 ? dx*dx + dy*dy : (double)0.0001;
@@ -75,24 +74,24 @@ static __global__ void compute_compulsive(const Point<double> *points, size_t po
 }
 
 static __global__ void update_velocities(Point<double> *velocities, const Point<double> *forces, size_t forces_size,
-        const ModelParameters<double> &params)
+        double time_quantum, double vertex_mass, double slowdown)
 {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;
     assert(i < forces_size);
 
-    double fact = params.timeQuantum / params.vertexMass;	// v = Ft/m  => t/m is mul factor for F.
-    velocities[i].x = (velocities[i].x + forces[i].x * fact) * params.slowdown;
-    velocities[i].y = (velocities[i].y + forces[i].y * fact) * params.slowdown;
+    double fact = time_quantum / vertex_mass;	// v = Ft/m  => t/m is mul factor for F.
+    velocities[i].x += forces[i].x * fact * slowdown;
+    velocities[i].y += forces[i].y * fact * slowdown;
 }
 
 static __global__ void update_point_positions(Point<double> *points, size_t points_size,
-        const Point<double> *velocities, const ModelParameters<double> &params)
+        const Point<double> *velocities, double time_quantum)
 {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;
     assert(i < points_size);
 
-    points[i].x += velocities[i].x * params.timeQuantum;
-    points[i].y += velocities[i].y * params.timeQuantum;
+    points[i].x += velocities[i].x * time_quantum;
+    points[i].y += velocities[i].y * time_quantum;
 }
 
 struct kernel_config_t {
@@ -124,6 +123,7 @@ void run_array_sum(Point<double> *dest_array, const Point<double> *src_array, si
 {
     kernel_config_t config = get_one_dimensional_config(size);
     array_sum<<<config.blocks, config.threads>>>(dest_array, src_array, size);
+    CUCH(cudaGetLastError());
 }
 
 void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces,
@@ -167,6 +167,7 @@ void run_compute_compulsive(const Point<double> *points, size_t points_size,
     std::cout << "Running compute compulsive kernel for:"; print_config(config);
     compute_compulsive<<<config.blocks, config.threads>>>
         (points, points_size, edges, edges_size, lengths, lengths_size, compulsive_forces_matrix, edgeCompulsion);
+    CUCH(cudaGetLastError());
 }
 
 void run_update_velocities(Point<double> *velocities, const Point<double> *forces, size_t forces_size,
@@ -175,7 +176,9 @@ void run_update_velocities(Point<double> *velocities, const Point<double> *force
     assert(forces_size % 2 == 0);
     kernel_config_t config = get_one_dimensional_config(forces_size);
     std::cout << "Running update velocities kernel for:"; print_config(config);
-    update_velocities<<<config.blocks, config.threads>>>(velocities, forces, forces_size, parameters);
+    update_velocities<<<config.blocks, config.threads>>>(velocities, forces, forces_size, parameters.timeQuantum,
+            parameters.vertexMass, parameters.slowdown);
+    CUCH(cudaGetLastError());
 }
 
 void run_update_point_positions(Point<double> *points, size_t points_size,
@@ -184,5 +187,6 @@ void run_update_point_positions(Point<double> *points, size_t points_size,
     assert(points_size % 2 == 0);
     kernel_config_t config = get_one_dimensional_config(points_size);
     std::cout << "Running update point positions kernel for:"; print_config(config);
-    update_point_positions<<<config.blocks, config.threads>>>(points, points_size, velocities, params);
+    update_point_positions<<<config.blocks, config.threads>>>(points, points_size, velocities, params.timeQuantum);
+    CUCH(cudaGetLastError());
 }
