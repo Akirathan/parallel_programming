@@ -31,4 +31,6 @@ add_executable(potential
         potential.cpp
         )
 
+add_executable(my_try my_try.cpp)
+
 target_link_libraries(potential)
