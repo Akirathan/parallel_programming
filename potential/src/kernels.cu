@@ -19,18 +19,12 @@ static __global__ void my_kernel(float *src)
 	src[idx] += 1.0f;
 }
 
-static __global__ void array_add(const float *array_1, const float *array_2, float *dest, size_t size)
+static __global__ void array_sum(Point<double> *dest_array, const Point<double> *src_array, size_t size)
 {
-	size_t idx = threadIdx.x;
-	assert(idx < size);
-	dest[idx] = array_1[idx] + array_2[idx];
-}
-
-static __global__ void print_thread_idx(int *dest, size_t size)
-{
-	size_t idx = threadIdx.x;
-	assert(idx < size);
-	dest[idx] = 23;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    assert(idx < size);
+    dest_array[idx].x += src_array[idx].x;
+    dest_array[idx].y += src_array[idx].y;
 }
 
 static __global__ void compute_repulsive(const Point<double> *points, Point<double> *repulsive_forces,
@@ -80,6 +74,43 @@ static __global__ void compute_compulsive(const Point<double> *points, size_t po
     atomicAdd(&compulsive_forces[edge.p2].y, -dy);
 }
 
+static __global__ void update_velocities(Point<double> *velocities, const Point<double> *forces, size_t forces_size,
+        const ModelParameters<double> &params)
+{
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    assert(i < forces_size);
+
+    double fact = params.timeQuantum / params.vertexMass;	// v = Ft/m  => t/m is mul factor for F.
+    velocities[i].x = (velocities[i].x + forces[i].x * fact) * params.slowdown;
+    velocities[i].y = (velocities[i].y + forces[i].y * fact) * params.slowdown;
+}
+
+static __global__ void update_point_positions(Point<double> *points, size_t points_size,
+        const Point<double> *velocities, const ModelParameters<double> &params)
+{
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    assert(i < points_size);
+
+    points[i].x += velocities[i].x * params.timeQuantum;
+    points[i].y += velocities[i].y * params.timeQuantum;
+}
+
+struct kernel_config_t {
+    dim3 blocks;
+    dim3 threads;
+};
+
+static kernel_config_t get_one_dimensional_config(size_t array_size)
+{
+    dim3 blocks{1, 1, 1};
+    dim3 threads{(unsigned)array_size, 1, 1};
+    while (threads.x > 1024) {
+        blocks.x *= 2;
+        threads.x /= 2;
+    }
+    return {blocks, threads};
+}
+
 /*
  * This is how a kernel call should be wrapped in a regular function call,
  * so it can be easilly used in cpp-only code.
@@ -89,16 +120,10 @@ void run_my_kernel(float *src)
 	my_kernel<<<64, 64>>>(src);
 }
 
-void run_array_add(const float *array_1, const float *array_2, float *dest, size_t size)
+void run_array_sum(Point<double> *dest_array, const Point<double> *src_array, size_t size)
 {
-	assert(dest != nullptr);
-	assert(size > 0 && size % 32 == 0);
-	array_add<<<1, size>>>(array_1, array_2, dest, size);
-}
-
-void run_print_thread_idx(int *dest, size_t size)
-{
-	print_thread_idx<<<1, size>>>(dest, size);
+    kernel_config_t config = get_one_dimensional_config(size);
+    array_sum<<<config.blocks, config.threads>>>(dest_array, src_array, size);
 }
 
 void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces,
@@ -124,6 +149,13 @@ void run_compute_repulsive(const Point<double> *points, size_t point_size, Point
     CUCH(cudaGetLastError());
 }
 
+static void print_config(const kernel_config_t &config)
+{
+    std::cout << "blocks_dim=(" << config.blocks.x << "," << config.blocks.y << ","
+              << config.blocks.z << "), threads_dim=(" << config.threads.x << "," << config.threads.y << "," << config.threads.z
+              << ")." << std::endl;
+}
+
 void run_compute_compulsive(const Point<double> *points, size_t points_size,
                             const Edge<uint32_t> *edges, size_t edges_size,
                             const uint32_t *lengths, size_t lengths_size,
@@ -131,15 +163,26 @@ void run_compute_compulsive(const Point<double> *points, size_t points_size,
 {
     assert(edges_size % 2 == 0);
 
-    dim3 blocks{1, 1, 1};
-    dim3 threads{(unsigned)edges_size, 1, 1};
-    while (threads.x > 1024) {
-        blocks.x *= 2;
-        threads.x /= 2;
-    }
-    std::cout << "Running compute compulsive kernel for blocks_dim=(" << blocks.x << "," << blocks.y << ","
-              << blocks.z << "), threads_dim=(" << threads.x << "," << threads.y << "," << threads.z
-              << ")." << std::endl;
-    compute_compulsive<<<blocks, threads>>>
+    kernel_config_t config = get_one_dimensional_config(edges_size);
+    std::cout << "Running compute compulsive kernel for:"; print_config(config);
+    compute_compulsive<<<config.blocks, config.threads>>>
         (points, points_size, edges, edges_size, lengths, lengths_size, compulsive_forces_matrix, edgeCompulsion);
+}
+
+void run_update_velocities(Point<double> *velocities, const Point<double> *forces, size_t forces_size,
+                           const ModelParameters<double> &parameters)
+{
+    assert(forces_size % 2 == 0);
+    kernel_config_t config = get_one_dimensional_config(forces_size);
+    std::cout << "Running update velocities kernel for:"; print_config(config);
+    update_velocities<<<config.blocks, config.threads>>>(velocities, forces, forces_size, parameters);
+}
+
+void run_update_point_positions(Point<double> *points, size_t points_size,
+                                const Point<double> *velocities, const ModelParameters<double> &params)
+{
+    assert(points_size % 2 == 0);
+    kernel_config_t config = get_one_dimensional_config(points_size);
+    std::cout << "Running update point positions kernel for:"; print_config(config);
+    update_point_positions<<<config.blocks, config.threads>>>(points, points_size, velocities, params);
 }

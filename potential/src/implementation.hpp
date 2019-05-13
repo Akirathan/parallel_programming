@@ -30,6 +30,7 @@ private:
 
     point_t *mCuPoints;
     point_t *mCuForces;
+    point_t *mCuVelocities;
     point_t *mCuRepulsiveForces;
     point_t *mCuCompulsiveForces;
     edge_t *mCuEdges;
@@ -42,6 +43,7 @@ public:
     {
         assert(cudaFree(mCuPoints) == cudaSuccess);
         assert(cudaFree(mCuForces) == cudaSuccess);
+        assert(cudaFree(mCuVelocities) == cudaSuccess);
         assert(cudaFree(mCuEdges) == cudaSuccess);
         assert(cudaFree(mCuLengths) == cudaSuccess);
         assert(cudaFree(mCuRepulsiveForces) == cudaSuccess);
@@ -59,6 +61,7 @@ public:
 
 		CUCH(cudaMalloc((void **) &mCuPoints, points * sizeof(point_t)));
         CUCH(cudaMalloc((void **) &mCuForces, points * sizeof(point_t)));
+        CUCH(cudaMalloc((void **) &mCuVelocities, points * sizeof(point_t)));
 		CUCH(cudaMalloc((void **) &mCuEdges, edges.size() * sizeof(edge_t)));
 		CUCH(cudaMalloc((void **) &mCuLengths, lengths.size() * sizeof(length_t)));
 		CUCH(cudaMalloc((void **) &mCuRepulsiveForces, points * sizeof(point_t)));
@@ -66,6 +69,7 @@ public:
 
         CUCH(cudaMemset(mCuPoints, 0.0, points * sizeof(point_t)));
         CUCH(cudaMemset(mCuForces, 0.0, points * sizeof(point_t)));
+        CUCH(cudaMemset(mCuVelocities, 0.0, points * sizeof(point_t)));
         CUCH(cudaMemset(mCuRepulsiveForces, 0.0, points * sizeof(point_t)));
         CUCH(cudaMemset(mCuCompulsiveForces, 0.0, points * sizeof(point_t)));
 		CUCH(cudaMemcpy(mCuEdges, edges.data(), edges.size() * sizeof(edge_t), cudaMemcpyHostToDevice));
@@ -91,11 +95,21 @@ public:
 		}
 
 		run_compute_compulsive(mCuPoints, points.size(), mCuEdges, mEdgesSize, mCuLengths, mLengthsSize,
-		        mCuCompulsiveForces, Base::mParams.edgeCompulsion);
+		        mCuForces, Base::mParams.edgeCompulsion);
 		if (Base::mVerbose) {
 		    std::cout << "Printing compulsive forces:" << std::endl;
-		    printCudaArray(mCuCompulsiveForces, points.size());
+		    printCudaArray(mCuForces, points.size());
 		}
+
+		// TODO: barrier
+
+		run_array_sum(mCuForces, mCuRepulsiveForces, points.size());
+		// TODO: barrier
+		run_update_velocities(mCuVelocities, mCuForces, points.size(), Base::mParams);
+        // TODO: barrier
+		run_update_point_positions(mCuPoints, points.size(), mCuVelocities, Base::mParams);
+
+		CUCH(cudaMemcpy(points.data(), mCuPoints, points.size() * sizeof(point_t), cudaMemcpyDeviceToHost));
 	}
 
 

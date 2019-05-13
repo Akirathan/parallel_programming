@@ -77,14 +77,17 @@ inline void print_device_properties()
  */
 
 void run_my_kernel(float *src);
-void run_array_add(const float *array_1, const float *array_2, float *dest, size_t size);
-void run_print_thread_idx(int *dest, size_t size);
+void run_array_sum(Point<double> *dest_array, const Point<double> *src_array, size_t size);
 void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces_matrix,
         double vertexRepulsion);
 void run_compute_compulsive(const Point<double> *points, size_t points_size,
         const Edge<uint32_t> *edges, size_t edges_size,
         const uint32_t *lengths, size_t length_size,
         Point<double> *compulsive_forces_matrix, double edgeCompulsion);
+void run_update_velocities(Point<double> *velocities, const Point<double> *forces, size_t forces_size,
+                           const ModelParameters<double> &parameters);
+void run_update_point_positions(Point<double> *points, size_t points_size,
+        const Point<double> *velocities, const ModelParameters<double> &params);
 
 
 
