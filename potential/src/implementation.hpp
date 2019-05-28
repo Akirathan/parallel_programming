@@ -92,6 +92,9 @@ public:
         if (mFirstIteration)
             CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
 
+        CUCH(cudaMemset(mCuRepulsiveForces, 0.0, points.size() * sizeof(point_t)));
+        CUCH(cudaMemset(mCuForces, 0.0, points.size() * sizeof(point_t)));
+
         run_compute_repulsive(mCuPoints, points.size(), mCuRepulsiveForces, Base::mParams.vertexRepulsion);
         if (Base::mVerbose) {
             std::cout << "Printing repulsive forces:" << std::endl;
