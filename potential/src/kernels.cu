@@ -30,23 +30,23 @@ static __global__ void array_sum(Point<double> *dest_array, const Point<double> 
 static __global__ void compute_repulsive(const Point<double> *points, Point<double> *repulsive_forces,
         size_t points_size, double vertexRepulsion)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    int p1_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int p2_idx = blockIdx.y * blockDim.y + threadIdx.y;
 
-    assert(i < points_size && j < points_size);
+    assert(p1_idx < points_size && p2_idx < points_size);
 
-    if (i < j) {
-        double dx = points[i].x - points[j].x;
-        double dy = points[i].y - points[j].y;
+    if (p1_idx > p2_idx) {
+        double dx = points[p1_idx].x - points[p2_idx].x;
+        double dy = points[p1_idx].y - points[p2_idx].y;
         double sqLen = dx*dx + dy*dy > (double)0.0001 ? dx*dx + dy*dy : (double)0.0001;
         double fact = vertexRepulsion / (sqLen * (double)std::sqrt(sqLen));	// mul factor
         dx *= fact;
         dy *= fact;
 
-        atomicAdd(&repulsive_forces[i].x, dx);
-        atomicAdd(&repulsive_forces[i].y, dy);
-        atomicAdd(&repulsive_forces[j].x, -dx);
-        atomicAdd(&repulsive_forces[j].y, -dy);
+        atomicAdd(&repulsive_forces[p1_idx].x, dx);
+        atomicAdd(&repulsive_forces[p1_idx].y, dy);
+        atomicAdd(&repulsive_forces[p2_idx].x, -dx);
+        atomicAdd(&repulsive_forces[p2_idx].y, -dy);
     }
 }
 
