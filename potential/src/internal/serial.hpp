@@ -148,6 +148,8 @@ public:
 
 	void computeForces(std::vector<point_t> &points, std::vector<point_t> &forces)
 	{
+        std::cout << "Serial: computeForces:" << std::endl;
+
 		forces.resize(points.size());
 
 		// Clear forces array for another run.
@@ -160,6 +162,13 @@ public:
 			for (index_t j = 0; j < i; ++j)
 				addRepulsiveForce(points, i, j, forces);
 		}
+
+		std::cout << "\tPrinting forces after repulsive forces were added:" << std::endl;
+		std::cout << "\t";
+		for (auto &&item : forces) {
+		    std::cout << item << " ";
+		}
+		std::cout << std::endl;
 
 		// Compute compulsive forces of the edges.
 		for (std::size_t i = 0; i < mEdges.size(); ++i)
