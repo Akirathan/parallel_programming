@@ -80,8 +80,8 @@ static __global__ void update_velocities(Point<double> *velocities, const Point<
     assert(i < forces_size);
 
     double fact = time_quantum / vertex_mass;	// v = Ft/m  => t/m is mul factor for F.
-    velocities[i].x += forces[i].x * fact * slowdown;
-    velocities[i].y += forces[i].y * fact * slowdown;
+    velocities[i].x = (velocities[i].x + forces[i].x * fact) * slowdown;
+    velocities[i].y = (velocities[i].y + forces[i].y * fact) * slowdown;
 }
 
 static __global__ void update_point_positions(Point<double> *points, size_t points_size,
