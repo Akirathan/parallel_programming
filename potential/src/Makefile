@@ -37,6 +37,10 @@ FILES = \
 	potential.cpp \
 	try.cpp
 
+INTERNAL_FILES = \
+	internal/serial.hpp
+
+
 PROJECT_DIR = "/mnt/home/s_bruchpa/potential/src"
 PARTITION = volta-lp
 SRUN_CMD = srun -p $(PARTITION) --gres=gpu:1
@@ -47,6 +51,8 @@ CUCA_MEMCHECK = /usr/local/cuda/bin/cuda-memcheck
 send_files:
 	@echo "Sending files..."
 	@scp -r -P 42222 $(FILES) "s_bruchpa@gpulab.ms.mff.cuni.cz:$(PROJECT_DIR)"
+	@echo "Sending internal files..."
+	@scp -r -P 42222 $(INTERNAL_FILES) "s_bruchpa@gpulab.ms.mff.cuni.cz:$(PROJECT_DIR)/internal"
 
 compile: send_files
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) make"
