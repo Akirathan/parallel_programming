@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 
+static const bool g_verbose = false;
 
 /**
  * \brief Serial implementation of the physical model.
@@ -148,7 +149,8 @@ public:
 
 	void computeForces(std::vector<point_t> &points, std::vector<point_t> &forces)
 	{
-        std::cout << "Serial: computeForces:" << std::endl;
+	    if (g_verbose)
+            std::cout << "Serial: computeForces:" << std::endl;
 
 		forces.resize(points.size());
 
@@ -163,17 +165,27 @@ public:
 				addRepulsiveForce(points, i, j, forces);
 		}
 
-		std::cout << "\tPrinting forces after repulsive forces were added:" << std::endl;
-		std::cout << "\t";
-		for (auto &&item : forces) {
-		    std::cout << item << " ";
+		if (g_verbose) {
+            std::cout << "\tPrinting forces after repulsive forces were added:" << std::endl;
+            std::cout << "\t";
+            for (auto &&item : forces) {
+                std::cout << item << " ";
+            }
+            std::cout << std::endl;
 		}
-		std::cout << std::endl;
 
 		// Compute compulsive forces of the edges.
 		for (std::size_t i = 0; i < mEdges.size(); ++i)
 			addCompulsiveForce(points, mEdges[i].p1, mEdges[i].p2, mLengths[i], forces);
-	}
+
+        if (g_verbose) {
+            std::cout << "\tPrinting forces:" << std::endl;
+            for (auto &&item : forces) {
+                std::cout << item << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
 
 
 	/**

@@ -10,6 +10,8 @@
 #define __global__
 #endif
 
+static const bool g_verbose = false;
+
 /*
  * Sample Kernel
  */
@@ -140,9 +142,10 @@ void run_compute_repulsive(const Point<double> *points, size_t point_size, Point
         threads.y /= 2;
     }
 
-    std::cout << "Running compute repulsive kernel for blocks_dim=(" << blocks.x << "," << blocks.y << ","
-              << blocks.z << "), threads_dim=(" << threads.x << "," << threads.y << "," << threads.z
-              << ")." << std::endl;
+    if (g_verbose)
+        std::cout << "Running compute repulsive kernel for blocks_dim=(" << blocks.x << "," << blocks.y << ","
+                  << blocks.z << "), threads_dim=(" << threads.x << "," << threads.y << "," << threads.z
+                  << ")." << std::endl;
     compute_repulsive<<<blocks, threads>>>(points, repulsive_forces, point_size, vertexRepulsion);
 
     // Check if kernel was launched properly.
@@ -164,7 +167,10 @@ void run_compute_compulsive(const Point<double> *points, size_t points_size,
     assert(edges_size % 2 == 0);
 
     kernel_config_t config = get_one_dimensional_config(edges_size);
-    std::cout << "Running compute compulsive kernel for:"; print_config(config);
+    if (g_verbose) {
+        std::cout << "Running compute compulsive kernel for:";
+        print_config(config);
+    }
     compute_compulsive<<<config.blocks, config.threads>>>
         (points, points_size, edges, edges_size, lengths, lengths_size, compulsive_forces_matrix, edgeCompulsion);
     CUCH(cudaGetLastError());
@@ -175,7 +181,10 @@ void run_update_velocities(Point<double> *velocities, const Point<double> *force
 {
     assert(forces_size % 2 == 0);
     kernel_config_t config = get_one_dimensional_config(forces_size);
-    std::cout << "Running update velocities kernel for:"; print_config(config);
+    if (g_verbose) {
+        std::cout << "Running update velocities kernel for:";
+        print_config(config);
+    }
     update_velocities<<<config.blocks, config.threads>>>(velocities, forces, forces_size, parameters.timeQuantum,
             parameters.vertexMass, parameters.slowdown);
     CUCH(cudaGetLastError());
@@ -186,7 +195,10 @@ void run_update_point_positions(Point<double> *points, size_t points_size,
 {
     assert(points_size % 2 == 0);
     kernel_config_t config = get_one_dimensional_config(points_size);
-    std::cout << "Running update point positions kernel for:"; print_config(config);
+    if (g_verbose) {
+        std::cout << "Running update point positions kernel for:";
+        print_config(config);
+    }
     update_point_positions<<<config.blocks, config.threads>>>(points, points_size, velocities, params.timeQuantum);
     CUCH(cudaGetLastError());
 }
