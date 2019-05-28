@@ -89,6 +89,9 @@ public:
      */
 	void iteration(std::vector<point_t> &points) override
 	{
+	    if (Base::mVerbose)
+	        std::cout << "================== My Iteration ==================" << std::endl;
+
         if (mFirstIteration)
             CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
 
@@ -111,6 +114,10 @@ public:
         CUCH(cudaDeviceSynchronize());
 
         run_array_sum(mCuForces, mCuRepulsiveForces, points.size());
+        if (Base::mVerbose) {
+            std::cout << "Printing forces:" << std::endl;
+            printCudaArray(mCuForces, points.size());
+        }
 
         CUCH(cudaDeviceSynchronize());
 
@@ -123,6 +130,8 @@ public:
         copyCudaArrayToVector(points, mCuPoints, mPointsSize);
 
         mFirstIteration = false;
+        if (Base::mVerbose)
+            std::cout << "================== End of my Iteration ==================" << std::endl;
 	}
 
 

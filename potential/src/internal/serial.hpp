@@ -173,6 +173,12 @@ public:
 		// Compute compulsive forces of the edges.
 		for (std::size_t i = 0; i < mEdges.size(); ++i)
 			addCompulsiveForce(points, mEdges[i].p1, mEdges[i].p2, mLengths[i], forces);
+
+		std::cout << "\tPrinting forces:" << std::endl;
+		for (auto &&item : forces) {
+		    std::cout << item << " ";
+		}
+		std::cout << std::endl;
 	}
 
 
