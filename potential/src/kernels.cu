@@ -5,14 +5,6 @@
 #include <iostream>
 #include "kernels.h"
 
-// TODO: quickfix
-#ifdef LOCAL
-#define __global__
-#endif
-
-static const bool g_verbose = false;
-
-
 static __global__ void array_sum(Point<double> *dest_array, const Point<double> *src_array, size_t size)
 {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -117,14 +109,6 @@ static kernel_config_t get_one_dimensional_config(size_t array_size)
     return {blocks, threads};
 }
 
-static void print_config(const kernel_config_t &config)
-{
-    std::cout << "blocks_dim=(" << config.blocks.x << "," << config.blocks.y << ","
-              << config.blocks.z << "), threads_dim=(" << config.threads.x << "," << config.threads.y << ","
-              << config.threads.z
-              << ")." << std::endl;
-}
-
 static void check_last_kernel_launch()
 {
     CUCH(cudaGetLastError());
@@ -141,10 +125,6 @@ void run_compute_repulsive(Point<double> *repulsive_forces, const Point<double> 
                            double vertexRepulsion)
 {
     kernel_config_t config = get_one_dimensional_config(point_size);
-    if (g_verbose) {
-        std::cout << "Running compute repulsive kernel for:";
-        print_config(config);
-    }
     compute_repulsive<<<config.blocks, config.threads>>>(repulsive_forces, points, point_size, vertexRepulsion);
     check_last_kernel_launch();
 }
@@ -153,10 +133,6 @@ void run_compute_compulsive(Point<double> *compulsive_forces, const Point<double
                             size_t edges_size, const uint32_t *lengths, double edgeCompulsion)
 {
     kernel_config_t config = get_one_dimensional_config(edges_size);
-    if (g_verbose) {
-        std::cout << "Running compute compulsive kernel for:";
-        print_config(config);
-    }
     compute_compulsive<<<config.blocks, config.threads>>>
         (compulsive_forces, points, edges, edges_size, lengths, edgeCompulsion);
     check_last_kernel_launch();
@@ -166,10 +142,6 @@ void run_update_velocities(Point<double> *velocities, const Point<double> *force
                            const ModelParameters<double> &parameters)
 {
     kernel_config_t config = get_one_dimensional_config(forces_size);
-    if (g_verbose) {
-        std::cout << "Running update velocities kernel for:";
-        print_config(config);
-    }
     update_velocities<<<config.blocks, config.threads>>>(velocities, forces, forces_size, parameters.timeQuantum,
             parameters.vertexMass, parameters.slowdown);
     check_last_kernel_launch();
@@ -179,10 +151,6 @@ void run_update_point_positions(Point<double> *points, size_t points_size,
                                 const Point<double> *velocities, const ModelParameters<double> &params)
 {
     kernel_config_t config = get_one_dimensional_config(points_size);
-    if (g_verbose) {
-        std::cout << "Running update point positions kernel for:";
-        print_config(config);
-    }
     update_point_positions<<<config.blocks, config.threads>>>(points, points_size, velocities, params.timeQuantum);
     check_last_kernel_launch();
 }
