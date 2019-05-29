@@ -29,15 +29,24 @@ static __global__ void array_sum(Point<double> *dest_array, const Point<double> 
     dest_array[idx].y += src_array[idx].y;
 }
 
+/**
+ * Takes a certain point according to current thread index and computes sum of all the forces with other points.
+ */
 static __global__ void compute_repulsive(const Point<double> *points, Point<double> *repulsive_forces,
         size_t points_size, double vertexRepulsion)
 {
-    int p1_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int p2_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    const size_t p1_idx = i;
 
-    assert(p1_idx < points_size && p2_idx < points_size);
+    assert(p1_idx < points_size);
 
-    if (p1_idx > p2_idx) {
+    double accumulator_x = 0;
+    double accumulator_y = 0;
+    for (size_t j = 0; j < points_size; ++j) {
+        if (i == j)
+            continue;
+
+        size_t p2_idx = j;
         double dx = points[p1_idx].x - points[p2_idx].x;
         double dy = points[p1_idx].y - points[p2_idx].y;
         double sqLen = dx*dx + dy*dy > (double)0.0001 ? dx*dx + dy*dy : (double)0.0001;
@@ -45,11 +54,11 @@ static __global__ void compute_repulsive(const Point<double> *points, Point<doub
         dx *= fact;
         dy *= fact;
 
-        atomicAdd(&repulsive_forces[p1_idx].x, dx);
-        atomicAdd(&repulsive_forces[p1_idx].y, dy);
-        atomicAdd(&repulsive_forces[p2_idx].x, -dx);
-        atomicAdd(&repulsive_forces[p2_idx].y, -dy);
+        accumulator_x += dx;
+        accumulator_y += dy;
     }
+    repulsive_forces[p1_idx].x += accumulator_x;
+    repulsive_forces[p1_idx].y += accumulator_y;
 }
 
 static __global__ void compute_compulsive(const Point<double> *points, size_t points_size,
@@ -112,6 +121,13 @@ static kernel_config_t get_one_dimensional_config(size_t array_size)
     return {blocks, threads};
 }
 
+static void print_config(const kernel_config_t &config)
+{
+    std::cout << "blocks_dim=(" << config.blocks.x << "," << config.blocks.y << ","
+              << config.blocks.z << "), threads_dim=(" << config.threads.x << "," << config.threads.y << "," << config.threads.z
+              << ")." << std::endl;
+}
+
 /*
  * This is how a kernel call should be wrapped in a regular function call,
  * so it can be easilly used in cpp-only code.
@@ -133,30 +149,16 @@ void run_compute_repulsive(const Point<double> *points, size_t point_size, Point
 {
     assert(point_size % 2 == 0);
 
-    dim3 blocks{1, 1, 1};
-    dim3 threads{(unsigned)point_size, (unsigned)point_size, 1};
-    while (threads.x * threads.y > 1024) {
-        blocks.x *= 2;
-        blocks.y *= 2;
-        threads.x /= 2;
-        threads.y /= 2;
-    }
+    kernel_config_t config = get_one_dimensional_config(point_size);
 
-    if (g_verbose)
-        std::cout << "Running compute repulsive kernel for blocks_dim=(" << blocks.x << "," << blocks.y << ","
-                  << blocks.z << "), threads_dim=(" << threads.x << "," << threads.y << "," << threads.z
-                  << ")." << std::endl;
-    compute_repulsive<<<blocks, threads>>>(points, repulsive_forces, point_size, vertexRepulsion);
+    if (g_verbose) {
+        std::cout << "Running compute repulsive kernel for:";
+        print_config(config);
+    }
+    compute_repulsive<<<config.blocks, config.threads>>>(points, repulsive_forces, point_size, vertexRepulsion);
 
     // Check if kernel was launched properly.
     CUCH(cudaGetLastError());
-}
-
-static void print_config(const kernel_config_t &config)
-{
-    std::cout << "blocks_dim=(" << config.blocks.x << "," << config.blocks.y << ","
-              << config.blocks.z << "), threads_dim=(" << config.threads.x << "," << config.threads.y << "," << config.threads.z
-              << ")." << std::endl;
 }
 
 void run_compute_compulsive(const Point<double> *points, size_t points_size,
