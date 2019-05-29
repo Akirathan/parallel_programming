@@ -47,6 +47,9 @@ SRUN_CMD = srun -p $(PARTITION) --gres=gpu:1
 SSH_CMD = ssh gpulab
 ARGS = -verify -verbose ~/potential/data/debug-v64-e256.gbf
 CUCA_MEMCHECK = /usr/local/cuda/bin/cuda-memcheck
+DATA_1 = ~/potential/data/v16k-e64k.gbf
+DATA_2 = ~/potential/data/v32k-e256k.gbf
+DATA_3 = ~/potential/data/v64k-e1024k.gbf
 
 send_files:
 	@echo "Sending files..."
@@ -59,6 +62,14 @@ compile: send_files
 
 run:
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(TARGET) $(ARGS)"
+
+run_all:
+	@echo "Running $(DATA_1)..."
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(TARGET) $(DATA_1)"
+	@echo "Running $(DATA_2)..."
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(TARGET) $(DATA_2)"
+	@echo "Running $(DATA_3)..."
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(TARGET) $(DATA_3)"
 
 debug:
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) gdb --args $(TARGET) $(ARGS)"
