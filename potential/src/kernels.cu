@@ -138,7 +138,7 @@ void run_compute_repulsive(const Point<double> *points, size_t point_size, Point
     while (threads.x * threads.y > 1024) {
         blocks.x *= 2;
         blocks.y *= 2;
-        threads.x /= 2; // TODO: integer division?
+        threads.x /= 2;
         threads.y /= 2;
     }
 
