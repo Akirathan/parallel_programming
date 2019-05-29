@@ -59,31 +59,15 @@ inline void _cuda_check(cudaError_t status, int line, const char *srcFile, const
  */
 #define CUCH(status) _cuda_check(status, __LINE__, __FILE__, #status)
 
-
-inline void print_device_properties()
-{
-    cudaDeviceProp properties{};
-    CUCH(cudaGetDeviceProperties(&properties, 0));
-
-    std::cout << "Device properties:" << std::endl;
-    std::cout << "\tName: " << properties.name << std::endl;
-    std::cout << "\tCompute capability: " << properties.major << "." << properties.minor << std::endl;
-    std::cout << "\tMax threads per block: " << properties.maxThreadsPerBlock << std::endl;
-    std::cout << "\tIntegrated: " << properties.integrated << std::endl;
-}
-
 /*
  * Kernel wrapper declarations.
  */
 
-void run_my_kernel(float *src);
 void run_array_sum(Point<double> *dest_array, const Point<double> *src_array, size_t size);
-void run_compute_repulsive(const Point<double> *points, size_t point_size, Point<double> *repulsive_forces_matrix,
-        double vertexRepulsion);
-void run_compute_compulsive(const Point<double> *points, size_t points_size,
-        const Edge<uint32_t> *edges, size_t edges_size,
-        const uint32_t *lengths, size_t length_size,
-        Point<double> *compulsive_forces_matrix, double edgeCompulsion);
+void run_compute_repulsive(Point<double> *repulsive_forces, const Point<double> *points, size_t point_size,
+                           double vertexRepulsion);
+void run_compute_compulsive(Point<double> *compulsive_forces, const Point<double> *points, const Edge<uint32_t> *edges,
+                            size_t edges_size, const uint32_t *lengths, double edgeCompulsion);
 void run_update_velocities(Point<double> *velocities, const Point<double> *forces, size_t forces_size,
                            const ModelParameters<double> &parameters);
 void run_update_point_positions(Point<double> *points, size_t points_size,

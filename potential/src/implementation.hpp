@@ -54,10 +54,6 @@ public:
 
 	void initialize(index_t points, const std::vector<edge_t>& edges, const std::vector<length_t> &lengths, index_t iterations) override
 	{
-		/*
-		 * Initialize your implementation.
-		 * Allocate/initialize buffers, transfer initial data to GPU...
-		 */
 		mPointsSize = points;
 		mEdgesSize = edges.size();
 		mLengthsSize = lengths.size();
@@ -77,11 +73,7 @@ public:
         CUCH(cudaMemset(mCuCompulsiveForces, 0.0, points * sizeof(point_t)));
 		CUCH(cudaMemcpy(mCuEdges, edges.data(), edges.size() * sizeof(edge_t), cudaMemcpyHostToDevice));
 		CUCH(cudaMemcpy(mCuLengths, lengths.data(), lengths.size() * sizeof(length_t), cudaMemcpyHostToDevice));
-
-		if (Base::mVerbose)
-		    std::cout << "initialization done" << std::endl;
 	}
-
 
     /**
      * Perform one iteration of the simulation and update positions of the points.
@@ -89,23 +81,19 @@ public:
      */
 	void iteration(std::vector<point_t> &points) override
 	{
-	    if (Base::mVerbose)
-	        std::cout << "================== My Iteration ==================" << std::endl;
-
         if (mFirstIteration)
             CUCH(cudaMemcpy(mCuPoints, points.data(), points.size() * sizeof(point_t), cudaMemcpyHostToDevice));
 
         CUCH(cudaMemset(mCuRepulsiveForces, 0.0, points.size() * sizeof(point_t)));
         CUCH(cudaMemset(mCuForces, 0.0, points.size() * sizeof(point_t)));
 
-        run_compute_repulsive(mCuPoints, points.size(), mCuRepulsiveForces, Base::mParams.vertexRepulsion);
+        run_compute_repulsive(mCuRepulsiveForces, mCuPoints, points.size(), Base::mParams.vertexRepulsion);
         if (Base::mVerbose) {
             std::cout << "Printing repulsive forces:" << std::endl;
             printCudaArray(mCuRepulsiveForces, points.size());
         }
 
-        run_compute_compulsive(mCuPoints, points.size(), mCuEdges, mEdgesSize, mCuLengths, mLengthsSize,
-                               mCuForces, Base::mParams.edgeCompulsion);
+        run_compute_compulsive(mCuForces, mCuPoints, mCuEdges, mEdgesSize, mCuLengths, Base::mParams.edgeCompulsion);
         if (Base::mVerbose) {
             std::cout << "Printing compulsive forces:" << std::endl;
             printCudaArray(mCuForces, points.size());
@@ -130,10 +118,7 @@ public:
         copyCudaArrayToVector(points, mCuPoints, mPointsSize);
 
         mFirstIteration = false;
-        if (Base::mVerbose)
-            std::cout << "================== End of my Iteration ==================" << std::endl;
 	}
-
 
     /**
      * Retrieve the velocities buffer from the GPU.
@@ -145,7 +130,6 @@ public:
 	}
 
 private:
-    // TODO: const T *cuda_array?
     template <typename T>
     void printCudaArray(T *cuda_array, size_t size) const
     {
