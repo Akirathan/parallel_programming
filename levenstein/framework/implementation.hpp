@@ -66,7 +66,12 @@ public:
         for (size_t upper_row_idx = 0; upper_row_idx < mTotalRowsCount; upper_row_idx += mRectangle.size()) {
             computeRectangle(upper_row_idx);
             if (DEBUG)
-                log_rectangle();
+                logRectangle();
+            reinitializeRectangle();
+            if (DEBUG) {
+                std::cout << "After reinitialization:" << std::endl;
+                logRectangle();
+            }
         }
 
         // TODO: Compute rest.
@@ -116,7 +121,29 @@ private:
 		return std::min({first, second, third});
     }
 
-    void log_rectangle() const
+    void reinitializeRectangle()
+    {
+        const size_t rectangle_rows = mRectangle.size();
+        const size_t rectangle_cols = mRectangle[0].size();
+
+        for (auto &&row : mFlagsRectangle)
+            for (auto &&item : row)
+                item = false;
+
+        // Copy last row to first row.
+        for (size_t j = 0; j < rectangle_cols; ++j) {
+            mRectangle[0][j] = mRectangle[rectangle_rows - 1][j];
+            mFlagsRectangle[0][j] = true;
+        }
+
+        // Reinitialize first column.
+        for (size_t i = 1; i < rectangle_rows; ++i) {
+            mRectangle[i][0] = mRectangle[0][0] + i;
+            mFlagsRectangle[i][0] = true;
+        }
+    }
+
+    void logRectangle() const
     {
         std::cout << "Rectangle:" << std::endl;
         for (size_t i = 0; i < mRectangle.size(); ++i) {
