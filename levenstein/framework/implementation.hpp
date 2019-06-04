@@ -63,7 +63,7 @@ public:
         mInputArray1 = &str1;
         mInputArray2 = &str2;
 
-        for (size_t upper_row_idx = 0; upper_row_idx < mTotalRowsCount; upper_row_idx += mRectangle.size()) {
+        for (size_t upper_row_idx = 0; upper_row_idx <= mTotalRowsCount - mRectangle.size(); upper_row_idx += mRectangle.size()) {
             computeRectangle(upper_row_idx);
             if (DEBUG)
                 logRectangle();
