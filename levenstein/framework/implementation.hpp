@@ -3,22 +3,53 @@
 
 #include <interface.hpp>
 #include <exception.hpp>
-
+#include <vector>
+#include <algorithm>
+#include <atomic>
+#include <omp.h>
 
 
 template<typename C = char, typename DIST = std::size_t, bool DEBUG = false>
 class EditDistance : public IEditDistance<C, DIST, DEBUG>
 {
 public:
+
+    EditDistance() :
+            mInputArray1{nullptr},
+            mInputArray2{nullptr},
+            mTotalRowsCount{0},
+            mTotalColsCount{0}
+    {}
+
 	/*
 	 * \brief Perform the initialization of the functor (e.g., allocate memory buffers).
 	 * \param len1, len2 Lengths of first and second string respectively.
 	 */
-	virtual void init(DIST len1, DIST len2)
+	void init(DIST len1, DIST len2) override
 	{
-		/*
-			Your core goes here ...
-		 */
+	    mTotalColsCount = static_cast<size_t>(len1) + 1;
+	    mTotalRowsCount = static_cast<size_t>(len2) + 1;
+
+	    mRectangle.resize(omp_get_num_procs());
+	    mFlagsRectangle.resize(omp_get_num_procs());
+	    for (std::vector<DIST> &row : mRectangle) {
+	        row.resize(mTotalColsCount, 0);
+	    }
+	    for (std::vector<bool> &row : mFlagsRectangle) {
+	        row.resize(mTotalColsCount, 0);
+	    }
+
+	    // Initialize first row.
+	    for (size_t i = 0; i < mRectangle[0].size(); ++i) {
+	        mRectangle[0][i] = static_cast<DIST>(i);
+	        mFlagsRectangle[0][i] = true;
+	    }
+
+	    // Initialize first column.
+	    for (size_t j = 0; j < mRectangle.size(); ++j) {
+	        mRectangle[j][0] = static_cast<DIST>(j);
+	        mFlagsRectangle[j][0] = true;
+	    }
 	}
 
 
@@ -27,13 +58,81 @@ public:
 	 * \param str1, str2 Strings to be compared.
 	 * \result The computed edit distance.
 	 */
-	virtual DIST compute(const std::vector<C> &str1, const std::vector<C> &str2)
+	DIST compute(const std::vector<C> &str1, const std::vector<C> &str2) override
 	{
-		/*
-			Your core goes here ...
-		*/
-		throw bpp::RuntimeError("Solution not implemented yet.");
+        mInputArray1 = &str1;
+        mInputArray2 = &str2;
+
+        for (size_t upper_row_idx = 0; upper_row_idx < mTotalRowsCount; upper_row_idx += mRectangle.size()) {
+            computeRectangle(upper_row_idx);
+            if (DEBUG)
+                log_rectangle();
+        }
+
+        // TODO: Compute rest.
+
+        mInputArray1 = nullptr;
+        mInputArray2 = nullptr;
+
+        return 0;
 	}
+
+private:
+    const std::vector<C> *mInputArray1;
+    const std::vector<C> *mInputArray2;
+    std::vector<std::vector<DIST>> mRectangle;
+    std::vector<std::vector<bool>> mFlagsRectangle;
+	size_t mTotalRowsCount;
+	size_t mTotalColsCount;
+
+	void computeRectangle(size_t upper_row_idx)
+    {
+
+#pragma omp parallel for shared(upper_row_idx)
+	    // Every thread computes one row.
+        for (size_t i = 1; i < mRectangle.size(); ++i) {
+            const size_t total_i = upper_row_idx + i;
+            for (size_t j = 1; j < mTotalColsCount; ++j) {
+                while (!mFlagsRectangle[i-1][j] || !mFlagsRectangle[i-1][j-1]) {
+                    // Active wait for another thread.
+                }
+                DIST upper = mRectangle[i-1][j];
+                DIST left_upper = mRectangle[i-1][j-1];
+                DIST left = mRectangle[i][j-1];
+                DIST a = (*mInputArray1)[j-1];
+                DIST b = (*mInputArray2)[total_i-1];
+                DIST dist = computeDistance(upper, left_upper, left, a, b);
+                mRectangle[i][j] = dist;
+                mFlagsRectangle[i][j] = true;
+            }
+        }
+    }
+
+	DIST computeDistance(DIST upper, DIST left_upper, DIST left, DIST a, DIST b) const
+    {
+		DIST first = upper + 1;
+		DIST second = left_upper + (a == b ? 0 : 1);
+		DIST third = left + 1;
+		return std::min({first, second, third});
+    }
+
+    void log_rectangle() const
+    {
+        std::cout << "Rectangle:" << std::endl;
+        for (size_t i = 0; i < mRectangle.size(); ++i) {
+            for (size_t j = 0; j < mRectangle[0].size(); ++j)
+                std::cout << mRectangle[i][j] << " ";
+            std::cout << std::endl;
+        }
+
+        std::cout << "Flags rectangle:" << std::endl;
+        for (size_t i = 0; i < mFlagsRectangle.size(); ++i) {
+            for (size_t j = 0; j < mFlagsRectangle[0].size(); ++j)
+                std::cout << mFlagsRectangle[i][j] << " ";
+            std::cout << std::endl;
+        }
+    }
+
 };
 
 
