@@ -27,3 +27,9 @@ add_executable(levenstein
 target_link_libraries(levenstein)
 
 add_executable(my_main my_main.cpp)
+
+add_executable(tests tests.cpp)
+
+add_executable(serial
+        ../serial/implementation.hpp
+        ../serial/levenshtein.cpp)
