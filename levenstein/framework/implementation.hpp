@@ -63,7 +63,11 @@ public:
         mInputArray1 = &str1;
         mInputArray2 = &str2;
 
-        for (size_t upper_row_idx = 0; upper_row_idx <= mTotalRowsCount - mRectangle.size(); upper_row_idx += mRectangle.size()) {
+        size_t upper_row_idx = 0;
+        for (;
+             upper_row_idx <= mTotalRowsCount - mRectangle.size();
+             upper_row_idx += mRectangle.size())
+        {
             computeRectangle(upper_row_idx);
             if (DEBUG)
                 logRectangle();
@@ -74,12 +78,30 @@ public:
             }
         }
 
-        // TODO: Compute rest.
+        // Compute rest.
+        size_t last_rectangle_i = 0;
+        size_t last_rectangle_j = 0;
+        for (size_t total_i = upper_row_idx, rectangle_i = 1;
+             total_i < mTotalRowsCount && rectangle_i < mRectangle.size();
+             ++total_i, ++rectangle_i)
+        {
+            for (size_t j = 1; j < mTotalColsCount; ++j) {
+                DIST upper = mRectangle[rectangle_i-1][j];
+                DIST left_upper = mRectangle[rectangle_i-1][j-1];
+                DIST left = mRectangle[rectangle_i][j-1];
+                DIST a = (*mInputArray1)[j-1];
+                DIST b = (*mInputArray2)[total_i-1];
+                DIST dist = computeDistance(upper, left_upper, left, a, b);
+                mRectangle[rectangle_i][j] = dist;
+                last_rectangle_i = rectangle_i;
+                last_rectangle_j = j;
+            }
+        }
 
         mInputArray1 = nullptr;
         mInputArray2 = nullptr;
 
-        return 0;
+        return mRectangle[last_rectangle_i][last_rectangle_j];
 	}
 
 private:
