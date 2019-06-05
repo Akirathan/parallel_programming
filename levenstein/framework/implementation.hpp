@@ -39,19 +39,8 @@ public:
 	        row.resize(mTotalColsCount, 0);
 	    }
 
-	    // Initialize first row.
-	    for (size_t i = 0; i < mRectangle[0].size(); ++i) {
-	        mRectangle[0][i] = static_cast<DIST>(i);
-	        mFlagsRectangle[0][i] = true;
-	    }
-
-	    // Initialize first column.
-	    for (size_t j = 0; j < mRectangle.size(); ++j) {
-	        mRectangle[j][0] = static_cast<DIST>(j);
-	        mFlagsRectangle[j][0] = true;
-	    }
+        reinitializeRectangle();
 	}
-
 
 	/*
 	 * \brief Compute the distance between two strings.
@@ -62,16 +51,17 @@ public:
 	{
         mInputArray1 = &str1;
         mInputArray2 = &str2;
+        reinitializeRectangle();
 
         size_t upper_row_idx = 0;
         for (;
              upper_row_idx <= mTotalRowsCount - mRectangle.size();
-             upper_row_idx += mRectangle.size())
+             upper_row_idx += mRectangle.size() - 1)
         {
             computeRectangle(upper_row_idx);
             if (DEBUG)
                 logRectangle();
-            reinitializeRectangle();
+            prepareRectangleForNextIteration();
             if (DEBUG) {
                 std::cout << "After reinitialization:" << std::endl;
                 logRectangle();
@@ -79,9 +69,9 @@ public:
         }
 
         // Compute rest.
-        size_t last_rectangle_i = 0;
-        size_t last_rectangle_j = 0;
-        for (size_t total_i = upper_row_idx, rectangle_i = 1;
+        size_t last_rectangle_i = mRectangle.size() - 1;
+        size_t last_rectangle_j = mTotalColsCount - 1;
+        for (size_t total_i = upper_row_idx + 1, rectangle_i = 1;
              total_i < mTotalRowsCount && rectangle_i < mRectangle.size();
              ++total_i, ++rectangle_i)
         {
@@ -144,6 +134,25 @@ private:
     }
 
     void reinitializeRectangle()
+    {
+        for (auto &&row : mFlagsRectangle) {
+            std::fill(row.begin(), row.end(), false);
+        }
+
+        // Initialize first row.
+        for (size_t i = 0; i < mRectangle[0].size(); ++i) {
+            mRectangle[0][i] = static_cast<DIST>(i);
+            mFlagsRectangle[0][i] = true;
+        }
+
+        // Initialize first column.
+        for (size_t j = 0; j < mRectangle.size(); ++j) {
+            mRectangle[j][0] = static_cast<DIST>(j);
+            mFlagsRectangle[j][0] = true;
+        }
+    }
+
+    void prepareRectangleForNextIteration()
     {
         const size_t rectangle_rows = mRectangle.size();
         const size_t rectangle_cols = mRectangle[0].size();
