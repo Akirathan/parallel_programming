@@ -8,7 +8,7 @@
 
 
 template<typename C = char, typename DIST = std::size_t, bool DEBUG = false>
-class EditDistance : public IEditDistance<C, DIST, DEBUG>
+class SerialEditDistance : public IEditDistance<C, DIST, DEBUG>
 {
 private:
 	std::vector<DIST> mRow;
@@ -57,6 +57,15 @@ public:
 				lastLeft = mRow[i] = std::min<DIST>(dist1, dist2);
 			}
 		}
+
+		if (DEBUG) {
+		    std::cout << "Last serial row:" << std::endl;
+		    std::cout << "\t";
+		    for (auto &&item : mRow)
+		        std::cout << item << " ";
+		    std::cout << std::endl;
+		}
+
 
 		// Last item of the last row is the result.
 		return mRow.back();

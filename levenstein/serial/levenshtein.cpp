@@ -3,7 +3,7 @@
 /*
  * Levenshtein's Edit Distance
  */
-#include <implementation.hpp>
+#include "implementation.hpp"
 
 #include <exception.hpp>
 #include <stopwatch.hpp>
@@ -63,7 +63,7 @@ template<bool DEBUG>
 std::size_t computeDistance(const std::vector<char_t> str1, const std::vector<char_t> &str2)
 {
 	// Initialize distance functor.
-	EditDistance<char_t, std::size_t, DEBUG> distance;
+	SerialEditDistance<char_t, std::size_t, DEBUG> distance;
 	distance.init(str1.size(), str2.size());
 
 	// Compute the distance.
