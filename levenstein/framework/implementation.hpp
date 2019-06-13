@@ -4,6 +4,7 @@
 #include <interface.hpp>
 #include <exception.hpp>
 #include <vector>
+#include <iostream>
 #include <algorithm>
 #include <atomic>
 #include <omp.h>

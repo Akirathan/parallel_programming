@@ -5,6 +5,7 @@
 #include <exception.hpp>
 
 #include <utility>
+#include <iostream>
 
 
 template<typename C = char, typename DIST = std::size_t, bool DEBUG = false>
