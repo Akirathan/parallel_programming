@@ -28,10 +28,19 @@ FILES = \
 	levenshtein.cpp
 
 PROJECT_DIR = "/mnt/home/s_bruchpa/levenstein_para/framework"
+DATA_DIR = ~/levenstein_para/data
 PARTITION = small-lp
 SRUN_CMD = srun -p $(PARTITION)
 SSH_CMD = ssh parlab
-ARGS = ~/levenstein_para/data/...
+ARGS = $(DATA_DIR)/debug-4k-A $(DATA_DIR)/debug-4k-B
+DATA_02_A = $(DATA_DIR)/02-16k-A
+DATA_02_B = $(DATA_DIR)/02-16k-B
+DATA_03_A = $(DATA_DIR)/03-64k-A
+DATA_03_B = $(DATA_DIR)/03-64k-B
+DATA_04_A = $(DATA_DIR)/04-48k-A
+DATA_04_B = $(DATA_DIR)/04-64k-B
+DATA_05_A = $(DATA_DIR)/05-64k-A
+DATA_05_B = $(DATA_DIR)/05-48k-B
 
 send_files:
 	@echo "Sending files..."
@@ -42,7 +51,21 @@ compile: send_files
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) make"
 
 run:
+	@echo "Running $(EXECUTABLE) $(ARGS)"
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
+
+run_all:
+	@echo "Running $(EXECUTABLE) $(DATA_02_A) $(DATA_02_B)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(DATA_02_A) $(DATA_02_B)"
+
+	@echo "Running $(EXECUTABLE) $(DATA_03_A) $(DATA_03_B)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(DATA_03_A) $(DATA_03_B)"
+
+	@echo "Running $(EXECUTABLE) $(DATA_04_A) $(DATA_04_B)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(DATA_04_A) $(DATA_04_B)"
+
+	@echo "Running $(EXECUTABLE) $(DATA_05_A) $(DATA_05_B)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(DATA_05_A) $(DATA_05_B)"
 
 # Cleaning Stuff
 
