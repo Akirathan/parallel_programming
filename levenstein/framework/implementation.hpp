@@ -19,7 +19,10 @@ public:
             mInputArray1{nullptr},
             mInputArray2{nullptr},
             mTotalRowsCount{0},
-            mTotalColsCount{0}
+            mTotalColsCount{0},
+            mDiagonalLen{0},
+            mLastDiagonalLen{0},
+            mLastLastDiagonalLen{0}
     {}
 
 	/*
@@ -30,17 +33,21 @@ public:
 	{
 	    mTotalColsCount = static_cast<size_t>(len1) + 1;
 	    mTotalRowsCount = static_cast<size_t>(len2) + 1;
+	    size_t diag_len = std::min(mTotalColsCount, mTotalRowsCount);
 
-	    mRectangle.resize(omp_get_num_procs());
-	    mFlagsRectangle.resize(omp_get_num_procs());
-	    for (std::vector<DIST> &row : mRectangle) {
-	        row.resize(mTotalColsCount, 0);
-	    }
-	    for (std::vector<bool> &row : mFlagsRectangle) {
-	        row.resize(mTotalColsCount, 0);
-	    }
+	    mDiagonal.resize(diag_len);
+        mLastDiagonal.resize(diag_len);
+        mLastLastDiagonal.resize(diag_len);
 
-        reinitializeRectangle();
+        mLastLastDiagonal[0] = 0;
+        mLastDiagonal[0] = 1;
+        mLastDiagonal[1] = 1;
+        mDiagonal[0] = 2;
+        mDiagonal[2] = 2;
+
+        mLastLastDiagonalLen = 1;
+        mLastDiagonalLen = 2;
+        mDiagonalLen = 3;
 	}
 
 	/*
@@ -52,78 +59,73 @@ public:
 	{
         mInputArray1 = &str1;
         mInputArray2 = &str2;
-        reinitializeRectangle();
 
-        size_t upper_row_idx = 0;
-        for (;
-             upper_row_idx <= mTotalRowsCount - mRectangle.size();
-             upper_row_idx += mRectangle.size() - 1)
-        {
-            computeRectangle(upper_row_idx);
+        size_t diagonal_count = mTotalRowsCount + mTotalRowsCount - 1;
+        for (size_t i = 2; i < diagonal_count; ++i) {
             if (DEBUG)
-                logRectangle();
-            prepareRectangleForNextIteration();
-            if (DEBUG) {
-                std::cout << "After reinitialization:" << std::endl;
-                logRectangle();
-            }
-        }
+                logDiagonals();
 
-        // Compute rest.
-        size_t last_rectangle_i = mRectangle.size() - 1;
-        size_t last_rectangle_j = mTotalColsCount - 1;
-        for (size_t total_i = upper_row_idx + 1, rectangle_i = 1;
-             total_i < mTotalRowsCount && rectangle_i < mRectangle.size();
-             ++total_i, ++rectangle_i)
-        {
-            for (size_t j = 1; j < mTotalColsCount; ++j) {
-                DIST upper = mRectangle[rectangle_i-1][j];
-                DIST left_upper = mRectangle[rectangle_i-1][j-1];
-                DIST left = mRectangle[rectangle_i][j-1];
-                DIST a = (*mInputArray1)[j-1];
-                DIST b = (*mInputArray2)[total_i-1];
-                DIST dist = computeDistance(upper, left_upper, left, a, b);
-                mRectangle[rectangle_i][j] = dist;
-                last_rectangle_i = rectangle_i;
-                last_rectangle_j = j;
-            }
+            size_t start_row = std::min(i, mTotalColsCount - 1);
+            size_t start_col = i - start_row;
+            mDiagonalLen = std::min(start_row, mTotalColsCount - 1 - start_col) + 1;
+
+            computeDiagonal(start_row, start_col);
+            prepareDiagonalsForNextIteration(i);
         }
 
         mInputArray1 = nullptr;
         mInputArray2 = nullptr;
 
-        return mRectangle[last_rectangle_i][last_rectangle_j];
+        return mDiagonal[0]; // TODO
 	}
 
 private:
+    static constexpr size_t chunk_size = 2;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
-    std::vector<std::vector<DIST>> mRectangle;
-    std::vector<std::vector<bool>> mFlagsRectangle;
-	size_t mTotalRowsCount;
-	size_t mTotalColsCount;
+    size_t mTotalRowsCount;
+    size_t mTotalColsCount;
+    std::vector<DIST> mDiagonal;
+    std::vector<DIST> mLastDiagonal;
+    std::vector<DIST> mLastLastDiagonal;
+    size_t mDiagonalLen;
+    size_t mLastDiagonalLen;
+    size_t mLastLastDiagonalLen;
 
-	void computeRectangle(size_t upper_row_idx)
+	void computeDiagonal(size_t start_row, size_t start_col)
     {
+	    size_t last_diag_idx = 0;
+#pragma omp parallel for shared(start_row, start_col, last_diag_idx)
+	    for (size_t start_diag_idx = 1; start_diag_idx < mDiagonalLen - 1; start_diag_idx += chunk_size) {
+	        // If in last chunk.
+	        if (start_diag_idx + 2*chunk_size > mDiagonalLen)
+	            last_diag_idx = start_diag_idx + chunk_size;
 
-#pragma omp parallel for shared(upper_row_idx)
-	    // Every thread computes one row.
-        for (size_t i = 1; i < mRectangle.size(); ++i) {
-            const size_t total_i = upper_row_idx + i;
-            for (size_t j = 1; j < mTotalColsCount; ++j) {
-                while (!mFlagsRectangle[i-1][j] || !mFlagsRectangle[i-1][j-1]) {
-                    // Active wait for another thread.
-                }
-                DIST upper = mRectangle[i-1][j];
-                DIST left_upper = mRectangle[i-1][j-1];
-                DIST left = mRectangle[i][j-1];
-                DIST a = (*mInputArray1)[j-1];
-                DIST b = (*mInputArray2)[total_i-1];
-                DIST dist = computeDistance(upper, left_upper, left, a, b);
-                mRectangle[i][j] = dist;
-                mFlagsRectangle[i][j] = true;
-            }
-        }
+	        // Iterate one chunk in diagonal.
+	        for (size_t diag_idx = start_diag_idx;
+	             diag_idx < start_diag_idx + chunk_size && diag_idx < mDiagonalLen - 1;
+	             ++diag_idx)
+	        {
+                mDiagonal[diag_idx] = computeAtDiagonal(start_row, start_col, diag_idx);
+	        }
+	    }
+
+	    // Compute rest of diagonal.
+	    for (size_t diag_idx = last_diag_idx; diag_idx < mDiagonalLen - 1; diag_idx++)
+            mDiagonal[diag_idx] = computeAtDiagonal(start_row, start_col, diag_idx);
+    }
+
+    DIST computeAtDiagonal(size_t start_row, size_t start_col, size_t diag_idx) const
+    {
+        size_t total_row = start_row - diag_idx;
+        size_t total_col = start_col + diag_idx;
+
+        DIST upper = mLastDiagonal[diag_idx + 1];
+        DIST left_upper = mLastLastDiagonal[diag_idx];
+        DIST left = mLastDiagonal[diag_idx];
+        DIST a = (*mInputArray1)[total_col - 1];
+        DIST b = (*mInputArray2)[total_row - 1];
+        return computeDistance(upper, left_upper, left, a, b);
     }
 
 	DIST computeDistance(DIST upper, DIST left_upper, DIST left, DIST a, DIST b) const
@@ -134,61 +136,53 @@ private:
 		return std::min({first, second, third});
     }
 
-    void reinitializeRectangle()
+    void prepareDiagonalsForNextIteration(size_t diag_idx)
     {
-        for (auto &&row : mFlagsRectangle) {
-            std::fill(row.begin(), row.end(), false);
+        // lastLastDiag <-- lastDiag.
+        for (size_t k = 0; k < mLastDiagonalLen; ++k) {
+            mLastLastDiagonal[k] = mLastDiagonal[k];
         }
+        mLastLastDiagonalLen = mLastDiagonalLen;
 
-        // Initialize first row.
-        for (size_t i = 0; i < mRectangle[0].size(); ++i) {
-            mRectangle[0][i] = static_cast<DIST>(i);
-            mFlagsRectangle[0][i] = true;
+        // lastDiag <-- diag.
+        for (size_t k = 0; k < mDiagonalLen; ++k) {
+            mLastDiagonal[k] = mDiagonal[k];
         }
+        mLastDiagonalLen = mDiagonalLen;
 
-        // Initialize first column.
-        for (size_t j = 0; j < mRectangle.size(); ++j) {
-            mRectangle[j][0] = static_cast<DIST>(j);
-            mFlagsRectangle[j][0] = true;
+        // If we iterate through first half of diagonals, we need to set elements at first column and first row.
+        if (diag_idx < mTotalRowsCount) {
+            mDiagonal[0]++;
+            mDiagonal[mDiagonalLen - 1]++;
         }
     }
 
-    void prepareRectangleForNextIteration()
+    void logDiagonals() const
     {
-        const size_t rectangle_rows = mRectangle.size();
-        const size_t rectangle_cols = mRectangle[0].size();
+        std::cout << "diagLen = " << mDiagonalLen << ", lastDiagLen = " << mLastDiagonalLen
+                  << ", lastLastDiagonalLen = " << mLastLastDiagonalLen << std::endl;
 
-        for (auto &&row : mFlagsRectangle)
-            for (auto &&item : row)
-                item = false;
+        std::cout << "lastLastDiagonal: [";
+        logVector(mLastLastDiagonal, mLastLastDiagonalLen);
+        std::cout << "]" << std::endl;
 
-        // Copy last row to first row.
-        for (size_t j = 0; j < rectangle_cols; ++j) {
-            mRectangle[0][j] = mRectangle[rectangle_rows - 1][j];
-            mFlagsRectangle[0][j] = true;
-        }
+        std::cout << "LastDiagonal: [";
+        logVector(mLastDiagonal, mLastDiagonalLen);
+        std::cout << "]" << std::endl;
 
-        // Reinitialize first column.
-        for (size_t i = 1; i < rectangle_rows; ++i) {
-            mRectangle[i][0] = mRectangle[0][0] + i;
-            mFlagsRectangle[i][0] = true;
-        }
+        std::cout << "Diagonal: [";
+        logVector(mDiagonal, mDiagonalLen);
+        std::cout << "]" << std::endl;
     }
 
-    void logRectangle() const
+    template <typename T>
+    void logVector(const std::vector<T> &vec, size_t elem_count) const
     {
-        std::cout << "Rectangle:" << std::endl;
-        for (size_t i = 0; i < mRectangle.size(); ++i) {
-            for (size_t j = 0; j < mRectangle[0].size(); ++j)
-                std::cout << mRectangle[i][j] << " ";
-            std::cout << std::endl;
-        }
-
-        std::cout << "Flags rectangle:" << std::endl;
-        for (size_t i = 0; i < mFlagsRectangle.size(); ++i) {
-            for (size_t j = 0; j < mFlagsRectangle[0].size(); ++j)
-                std::cout << mFlagsRectangle[i][j] << " ";
-            std::cout << std::endl;
+	    for (size_t i = 0; i < elem_count; i++) {
+	        if (i == elem_count - 1)
+                std::cout << vec[i];
+	        else
+                std::cout << vec[i] << ", ";
         }
     }
 
