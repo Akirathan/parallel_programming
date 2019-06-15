@@ -22,7 +22,8 @@ public:
             mTotalColsCount{0},
             mDiagonalLen{0},
             mLastDiagonalLen{0},
-            mLastLastDiagonalLen{0}
+            mLastLastDiagonalLen{0},
+            mIsInFirstHalfOfDiagonals{false}
     {}
 
 	/*
@@ -61,22 +62,25 @@ public:
         mInputArray2 = &str2;
 
         size_t diagonal_count = mTotalRowsCount + mTotalRowsCount - 1;
-        for (size_t i = 2; i < diagonal_count; ++i) {
+        for (size_t diag_idx = 2; diag_idx < diagonal_count; ++diag_idx) {
+            if (DEBUG)
+                std::cout << "================" << std::endl;
+
+            size_t start_row = std::min(diag_idx, mTotalColsCount - 1);
+            size_t start_col = diag_idx - start_row;
+            mDiagonalLen = std::min(start_row, mTotalColsCount - 1 - start_col) + 1;
+            mIsInFirstHalfOfDiagonals = diag_idx < mTotalRowsCount;
+
+            computeDiagonal(start_row, start_col, diag_idx);
             if (DEBUG)
                 logDiagonals();
-
-            size_t start_row = std::min(i, mTotalColsCount - 1);
-            size_t start_col = i - start_row;
-            mDiagonalLen = std::min(start_row, mTotalColsCount - 1 - start_col) + 1;
-
-            computeDiagonal(start_row, start_col);
-            prepareDiagonalsForNextIteration(i);
+            prepareDiagonalsForNextIteration(diag_idx);
         }
 
         mInputArray1 = nullptr;
         mInputArray2 = nullptr;
 
-        return mDiagonal[0]; // TODO
+        return mDiagonal[0];
 	}
 
 private:
@@ -91,40 +95,66 @@ private:
     size_t mDiagonalLen;
     size_t mLastDiagonalLen;
     size_t mLastLastDiagonalLen;
+    bool mIsInFirstHalfOfDiagonals;
 
-	void computeDiagonal(size_t start_row, size_t start_col)
+    /// \param start_row Index of row where current diagonal begins.
+    /// \param start_col Index of column where current diagonal begins.
+    /// \param diag_idx Index of current diagonal.
+	void computeDiagonal(size_t start_row, size_t start_col, size_t diag_idx)
     {
-	    size_t last_diag_idx = 0;
-#pragma omp parallel for shared(start_row, start_col, last_diag_idx)
-	    for (size_t start_diag_idx = 1; start_diag_idx < mDiagonalLen - 1; start_diag_idx += chunk_size) {
+	    size_t last_idx_in_diag = 0;
+//#pragma omp parallel for shared(start_row, start_col, last_idx_in_diag)
+	    for (size_t start_idx_in_diag = 0; start_idx_in_diag < mDiagonalLen; start_idx_in_diag += chunk_size) {
+	        if (start_idx_in_diag == 0 && mIsInFirstHalfOfDiagonals)
+	            start_idx_in_diag++;
+	        else if (start_idx_in_diag == mDiagonalLen - 1 && mIsInFirstHalfOfDiagonals)
+                break;
+
 	        // If in last chunk.
-	        if (start_diag_idx + 2*chunk_size > mDiagonalLen)
-	            last_diag_idx = start_diag_idx + chunk_size;
+	        if (start_idx_in_diag + 2*chunk_size > mDiagonalLen)
+	            last_idx_in_diag = start_idx_in_diag + chunk_size;
 
 	        // Iterate one chunk in diagonal.
-	        for (size_t diag_idx = start_diag_idx;
-	             diag_idx < start_diag_idx + chunk_size && diag_idx < mDiagonalLen - 1;
-	             ++diag_idx)
+	        size_t end_idx_in_diag = mIsInFirstHalfOfDiagonals ? mDiagonalLen - 1 : mDiagonalLen;
+	        for (size_t idx_in_diag = start_idx_in_diag;
+	             idx_in_diag < start_idx_in_diag + chunk_size && idx_in_diag < end_idx_in_diag;
+	             ++idx_in_diag)
 	        {
-                mDiagonal[diag_idx] = computeAtDiagonal(start_row, start_col, diag_idx);
+                mDiagonal[idx_in_diag] = computeAtDiagonal(diag_idx, start_row, start_col, idx_in_diag);
 	        }
 	    }
 
 	    // Compute rest of diagonal.
-	    for (size_t diag_idx = last_diag_idx; diag_idx < mDiagonalLen - 1; diag_idx++)
-            mDiagonal[diag_idx] = computeAtDiagonal(start_row, start_col, diag_idx);
+	    for (size_t idx_in_diag = last_idx_in_diag; idx_in_diag < mDiagonalLen; idx_in_diag++) {
+	        if (idx_in_diag == mDiagonalLen - 1 && mIsInFirstHalfOfDiagonals)
+	            break;
+            mDiagonal[idx_in_diag] = computeAtDiagonal(diag_idx, start_row, start_col, idx_in_diag);
+        }
     }
 
-    DIST computeAtDiagonal(size_t start_row, size_t start_col, size_t diag_idx) const
+    /**
+     * @param diag_idx Index of current diagonal.
+     * @param start_row Index of row where current diagonal begins.
+     * @param start_col Index of column where current diagonal begins.
+     * @param idx_in_diagonal Index into the current diagonal.
+     * @return Levenshtein distance.
+     */
+    DIST computeAtDiagonal(size_t diag_idx, size_t start_row, size_t start_col, size_t idx_in_diagonal) const
     {
-        size_t total_row = start_row - diag_idx;
-        size_t total_col = start_col + diag_idx;
+        size_t total_row = start_row - idx_in_diagonal;
+        size_t total_col = start_col + idx_in_diagonal;
 
-        DIST upper = mLastDiagonal[diag_idx + 1];
-        DIST left_upper = mLastLastDiagonal[diag_idx];
-        DIST left = mLastDiagonal[diag_idx];
+        DIST upper = mIsInFirstHalfOfDiagonals ? mLastDiagonal[idx_in_diagonal] : mLastDiagonal[idx_in_diagonal + 1];
+        DIST left_upper = mIsInFirstHalfOfDiagonals ? mLastLastDiagonal[idx_in_diagonal - 1] : mLastLastDiagonal[idx_in_diagonal + 1];
+        if (isRightAfterHalf(diag_idx))
+            left_upper = mLastLastDiagonal[idx_in_diagonal];
+        DIST left = mIsInFirstHalfOfDiagonals ? mLastDiagonal[idx_in_diagonal - 1] : mLastDiagonal[idx_in_diagonal];
         DIST a = (*mInputArray1)[total_col - 1];
         DIST b = (*mInputArray2)[total_row - 1];
+        if (DEBUG)
+            std::cout << "\tComputing diagonal at start_row=" << start_row << ", start_col=" << start_col
+                      << ", upper=" << upper << ", left_upper=" << left_upper << ", left=" << left
+                      << ", a=" << (char)a << ", b=" << (char)b << std::endl;
         return computeDistance(upper, left_upper, left, a, b);
     }
 
@@ -151,10 +181,19 @@ private:
         mLastDiagonalLen = mDiagonalLen;
 
         // If we iterate through first half of diagonals, we need to set elements at first column and first row.
-        if (diag_idx < mTotalRowsCount) {
+        if (diag_idx < mTotalRowsCount - 1) {
             mDiagonal[0]++;
-            mDiagonal[mDiagonalLen - 1]++;
+            size_t next_diag_len = mDiagonalLen + 1;
+            mDiagonal[next_diag_len - 1] = mDiagonal[0];
         }
+    }
+
+    /// Returns true if we are currently on a diagonal that is right after the middle diagonal.
+    /// This diagonal needs special index handling.
+    bool isRightAfterHalf(size_t diag_idx) const
+    {
+	    // idx(last_diagonal) == rows - 1.
+	    return diag_idx == mTotalRowsCount;
     }
 
     void logDiagonals() const
