@@ -74,7 +74,7 @@ public:
             if (DEBUG)
                 std::cout << "================" << std::endl;
 
-            size_t start_row = std::min(diag_idx, mTotalColsCount - 1);
+            size_t start_row = std::min(diag_idx, mTotalRowsCount - 1);
             size_t start_col = diag_idx - start_row;
             mDiagonalLen = std::min(start_row, mTotalColsCount - 1 - start_col) + 1;
             mIsInFirstHalfOfDiagonals = diag_idx < mTotalRowsCount;
@@ -194,6 +194,11 @@ private:
             size_t next_diag_len = mDiagonalLen + 1;
             mDiagonal[next_diag_len - 1] = mDiagonal[0];
         }
+    index_t getStartIndexesOfDiagonal(size_t diag_idx) const
+    {
+        size_t start_row = std::min(diag_idx, mTotalRowsCount - 1);
+        size_t start_col = diag_idx - start_row;
+        return {start_row, start_col};
     }
 
     /// Returns true if we are currently on a diagonal that is right after the middle diagonal.
