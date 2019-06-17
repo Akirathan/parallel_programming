@@ -92,6 +92,11 @@ public:
 	}
 
 private:
+    struct index_t {
+        size_t row = 0;
+        size_t col = 0;
+    };
+
     static constexpr size_t chunk_size = 2;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
@@ -174,7 +179,10 @@ private:
 		return std::min({first, second, third});
     }
 
-    void prepareDiagonalsForNextIteration(size_t diag_idx)
+    /**
+     * @param actual_diag_idx Index of actual diagonal ie. we want to prepare for diagonal of index actual_diag_idx+1.
+     */
+    void prepareDiagonalsForNextIteration(size_t actual_diag_idx)
     {
         // lastLastDiag <-- lastDiag.
         for (size_t k = 0; k < mLastDiagonalLen; ++k) {
@@ -188,12 +196,23 @@ private:
         }
         mLastDiagonalLen = mDiagonalLen;
 
+        size_t next_diag_idx = actual_diag_idx + 1;
         // If we iterate through first half of diagonals, we need to set elements at first column and first row.
-        if (diag_idx < mTotalRowsCount - 1) {
+        if (next_diag_idx < mTotalRowsCount) {
             mDiagonal[0]++;
             size_t next_diag_len = mDiagonalLen + 1;
             mDiagonal[next_diag_len - 1] = mDiagonal[0];
         }
+        else {
+            // Increment just one end of diagonal (upper end).
+            index_t start_indexes = getStartIndexesOfDiagonal(next_diag_idx);
+            if (start_indexes.col > mTotalColsCount - mTotalRowsCount)
+                return;
+
+            size_t next_diag_len = mDiagonalLen;
+            mDiagonal[next_diag_len - 1] = mDiagonal[mDiagonalLen - 1] + 1;
+        }
+    }
     index_t getStartIndexesOfDiagonal(size_t diag_idx) const
     {
         size_t start_row = std::min(diag_idx, mTotalRowsCount - 1);
