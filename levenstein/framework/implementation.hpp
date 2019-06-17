@@ -118,9 +118,9 @@ private:
 	    size_t last_idx_in_diag = 0;
 //#pragma omp parallel for shared(start_row, start_col, last_idx_in_diag)
 	    for (size_t start_idx_in_diag = 0; start_idx_in_diag < mDiagonalLen; start_idx_in_diag += chunk_size) {
-	        if (start_idx_in_diag == 0 && mIsInFirstHalfOfDiagonals)
+	        if (start_idx_in_diag == 0 && diagContainsFirstColumn(diag_idx))
 	            start_idx_in_diag++;
-	        else if (start_idx_in_diag == mDiagonalLen - 1 && mIsInFirstHalfOfDiagonals)
+	        else if (start_idx_in_diag == mDiagonalLen - 1 && diagContainsFirstRow(diag_idx))
                 break;
 
 	        // If in last chunk.
@@ -128,7 +128,7 @@ private:
 	            last_idx_in_diag = start_idx_in_diag + chunk_size;
 
 	        // Iterate one chunk in diagonal.
-	        size_t end_idx_in_diag = mIsInFirstHalfOfDiagonals ? mDiagonalLen - 1 : mDiagonalLen;
+	        size_t end_idx_in_diag = diagContainsFirstRow(diag_idx) ? mDiagonalLen - 1 : mDiagonalLen;
 	        for (size_t idx_in_diag = start_idx_in_diag;
 	             idx_in_diag < start_idx_in_diag + chunk_size && idx_in_diag < end_idx_in_diag;
 	             ++idx_in_diag)
@@ -139,7 +139,7 @@ private:
 
 	    // Compute rest of diagonal.
 	    for (size_t idx_in_diag = last_idx_in_diag; idx_in_diag < mDiagonalLen; idx_in_diag++) {
-	        if (idx_in_diag == mDiagonalLen - 1 && mIsInFirstHalfOfDiagonals)
+	        if (idx_in_diag == mDiagonalLen - 1 && diagContainsFirstRow(diag_idx))
 	            break;
             mDiagonal[idx_in_diag] = computeAtDiagonal(diag_idx, start_row, start_col, idx_in_diag);
         }
@@ -213,6 +213,17 @@ private:
             mDiagonal[next_diag_len - 1] = mDiagonal[mDiagonalLen - 1] + 1;
         }
     }
+
+    bool diagContainsFirstColumn(size_t diag_idx) const
+    {
+        return diag_idx < mTotalRowsCount;
+    }
+
+    bool diagContainsFirstRow(size_t diag_idx) const
+    {
+        return diag_idx < mTotalColsCount;
+    }
+
     index_t getStartIndexesOfDiagonal(size_t diag_idx) const
     {
         size_t start_row = std::min(diag_idx, mTotalRowsCount - 1);
