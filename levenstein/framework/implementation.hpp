@@ -178,15 +178,11 @@ private:
     void prepareDiagonalsForNextIteration(size_t actual_diag_idx)
     {
         // lastLastDiag <-- lastDiag.
-        for (size_t k = 0; k < mLastDiagonalLen; ++k) {
-            mLastLastDiagonal[k] = mLastDiagonal[k];
-        }
+        std::copy(mLastDiagonal.begin(), mLastDiagonal.begin() + mLastDiagonalLen, mLastLastDiagonal.begin());
         mLastLastDiagonalLen = mLastDiagonalLen;
 
         // lastDiag <-- diag.
-        for (size_t k = 0; k < mDiagonalLen; ++k) {
-            mLastDiagonal[k] = mDiagonal[k];
-        }
+        std::copy(mDiagonal.begin(), mDiagonal.begin() + mDiagonalLen, mLastDiagonal.begin());
         mLastDiagonalLen = mDiagonalLen;
 
         size_t next_diag_idx = actual_diag_idx + 1;
