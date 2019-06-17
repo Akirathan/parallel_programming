@@ -3,6 +3,7 @@
 
 #include <interface.hpp>
 #include <exception.hpp>
+#include <cassert>
 #include <vector>
 #include <iostream>
 #include <algorithm>
@@ -32,8 +33,8 @@ public:
 	 */
 	void init(DIST len1, DIST len2) override
 	{
-	    mTotalColsCount = static_cast<size_t>(len1) + 1;
-	    mTotalRowsCount = static_cast<size_t>(len2) + 1;
+	    mTotalColsCount = std::max(len1, len2) + 1;
+	    mTotalRowsCount = std::min(len1, len2) + 1;
 	    size_t diag_len = std::min(mTotalColsCount, mTotalRowsCount);
 
 	    mDiagonal.resize(diag_len);
@@ -58,8 +59,15 @@ public:
 	 */
 	DIST compute(const std::vector<C> &str1, const std::vector<C> &str2) override
 	{
-        mInputArray1 = &str1;
-        mInputArray2 = &str2;
+	    if (str1.size() > str2.size()) {
+            mInputArray1 = &str1;
+            mInputArray2 = &str2;
+        }
+	    else {
+	        mInputArray1 = &str2;
+	        mInputArray2 = &str1;
+	    }
+	    assert(mInputArray1->size() >= mInputArray2->size() && mTotalColsCount >= mTotalRowsCount);
 
         size_t diagonal_count = mTotalRowsCount + mTotalRowsCount - 1;
         for (size_t diag_idx = 2; diag_idx < diagonal_count; ++diag_idx) {
