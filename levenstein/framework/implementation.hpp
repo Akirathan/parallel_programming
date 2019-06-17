@@ -197,18 +197,12 @@ private:
         mLastDiagonalLen = mDiagonalLen;
 
         size_t next_diag_idx = actual_diag_idx + 1;
-        // If we iterate through first half of diagonals, we need to set elements at first column and first row.
-        if (next_diag_idx < mTotalRowsCount) {
-            mDiagonal[0]++;
+        if (diagContainsFirstColumn(next_diag_idx) && diagContainsFirstRow(next_diag_idx)) {
             size_t next_diag_len = mDiagonalLen + 1;
+            mDiagonal[0]++;
             mDiagonal[next_diag_len - 1] = mDiagonal[0];
         }
-        else {
-            // Increment just one end of diagonal (upper end).
-            index_t start_indexes = getStartIndexesOfDiagonal(next_diag_idx);
-            if (start_indexes.col > mTotalColsCount - mTotalRowsCount)
-                return;
-
+        else if (diagContainsFirstRow(next_diag_idx)) {
             size_t next_diag_len = mDiagonalLen;
             mDiagonal[next_diag_len - 1] = mDiagonal[mDiagonalLen - 1] + 1;
         }
