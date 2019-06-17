@@ -92,11 +92,6 @@ public:
 	}
 
 private:
-    struct index_t {
-        size_t row = 0;
-        size_t col = 0;
-    };
-
     static constexpr size_t chunk_size = 2;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
@@ -216,13 +211,6 @@ private:
     bool diagContainsFirstRow(size_t diag_idx) const
     {
         return diag_idx < mTotalColsCount;
-    }
-
-    index_t getStartIndexesOfDiagonal(size_t diag_idx) const
-    {
-        size_t start_row = std::min(diag_idx, mTotalRowsCount - 1);
-        size_t start_col = diag_idx - start_row;
-        return {start_row, start_col};
     }
 
     /// Returns true if we are currently on a diagonal that is right after the middle diagonal.
