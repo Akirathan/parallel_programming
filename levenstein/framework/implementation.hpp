@@ -92,7 +92,7 @@ public:
 	}
 
 private:
-    static constexpr size_t chunk_size = 2;
+    static constexpr size_t chunk_size = 3 * 1024;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
     size_t mTotalRowsCount;
