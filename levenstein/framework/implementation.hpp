@@ -69,7 +69,7 @@ public:
 	    }
 	    assert(mInputArray1->size() >= mInputArray2->size() && mTotalColsCount >= mTotalRowsCount);
 
-        size_t diagonal_count = mTotalRowsCount + mTotalRowsCount - 1;
+        size_t diagonal_count = mTotalRowsCount + mTotalColsCount - 1;
         for (size_t diag_idx = 2; diag_idx < diagonal_count; ++diag_idx) {
             if (DEBUG)
                 std::cout << "================" << std::endl;
