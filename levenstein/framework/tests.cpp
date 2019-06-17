@@ -122,7 +122,8 @@ static void bednarek_random_tests()
             {32768, 4096}*/
     };
 
-    const size_t iters = 2;
+    // TODO: Mam vubec podporovat vic iteraci za sebou?
+    const size_t iters = 1;
 
     std::uniform_int_distribution<int> ui{0, 255};
     std::mt19937 engine;
