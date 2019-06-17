@@ -111,12 +111,8 @@ private:
 	void computeDiagonal(size_t start_row, size_t start_col, size_t diag_idx)
     {
 	    size_t last_idx_in_diag = 0;
-//#pragma omp parallel for shared(start_row, start_col, last_idx_in_diag)
+#pragma omp parallel for shared(start_row, start_col, last_idx_in_diag)
 	    for (size_t start_idx_in_diag = 0; start_idx_in_diag < mDiagonalLen; start_idx_in_diag += chunk_size) {
-	        if (start_idx_in_diag == 0 && diagContainsFirstColumn(diag_idx))
-	            start_idx_in_diag++;
-	        else if (start_idx_in_diag == mDiagonalLen - 1 && diagContainsFirstRow(diag_idx))
-                break;
 
 	        // If in last chunk.
 	        if (start_idx_in_diag + 2*chunk_size > mDiagonalLen)
@@ -128,6 +124,8 @@ private:
 	             idx_in_diag < start_idx_in_diag + chunk_size && idx_in_diag < end_idx_in_diag;
 	             ++idx_in_diag)
 	        {
+	            if (idx_in_diag == 0 && diagContainsFirstColumn(diag_idx))
+                    continue;
                 mDiagonal[idx_in_diag] = computeAtDiagonal(diag_idx, start_row, start_col, idx_in_diag);
 	        }
 	    }
