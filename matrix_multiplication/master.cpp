@@ -34,7 +34,7 @@ void master_task(char **argv, int workers_count)
 
     //block_sizes_t block_sizes = determine_block_sizes(result_rows_count, result_cols_count);
 
-    std::cout << "From Master: \n\tA.rows=" << matrix1_reader.getRowsCount()
+    std::cout << "Master: A.rows=" << matrix1_reader.getRowsCount()
               << ", A.cols=" << matrix1_reader.getColsCount()
               << ", B.rows=" << matrix2_reader.getRowsCount()
               << ", B.cols=" << matrix2_reader.getColsCount()
@@ -50,11 +50,19 @@ static void send_to_worker(const void *buf, int count, MPI_Datatype datatype, in
 static void send_matrices_sizes_to_workers(const matrices_sizes_t &matrices_sizes, int workers_count)
 {
     if (DEBUG)
-        std::cout << "Master: sending matrices to workers." << std::endl;
+        std::cout << "Master: sending sizes of matrices to all workers." << std::endl;
 
-    assert(workers_count == 1);
+    for (int worker_rank = 1; worker_rank < workers_count + 1; worker_rank++) {
+        send_to_worker(&matrices_sizes.a_rows, 1, MPI_INT, worker_rank);
+        send_to_worker(&matrices_sizes.a_cols, 1, MPI_INT, worker_rank);
+        send_to_worker(&matrices_sizes.b_rows, 1, MPI_INT, worker_rank);
+        send_to_worker(&matrices_sizes.b_cols, 1, MPI_INT, worker_rank);
+    }
+}
 
-    send_to_worker(&matrices_sizes.a_rows, 1, MPI_INT, 1);
+static void send_blocks_to_workers()
+{
+    
 }
 
 static block_sizes_t determine_block_sizes(size_t rows_count, size_t cols_count)

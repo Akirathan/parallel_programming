@@ -34,8 +34,22 @@ static matrices_sizes_t receive_matrices_sizes_from_master()
 {
     int a_rows = 0;
     receive_from_master(&a_rows, 1, MPI_INT);
+    int a_cols = 0;
+    receive_from_master(&a_cols, 1, MPI_INT);
+    int b_rows = 0;
+    receive_from_master(&b_rows, 1, MPI_INT);
+    int b_cols = 0;
+    receive_from_master(&b_cols, 1, MPI_INT);
 
     if (DEBUG)
-        std::cout << "Worker: received from master: a_rows=" << a_rows << std::endl;
+        std::cout << "Worker(" << get_rank() << "): received from master: a_rows=" << a_rows << ", a_cols="
+                  << a_cols << ", b_rows=" << b_rows << ", b_cols=" << b_cols << std::endl;
+
+    return matrices_sizes_t {
+        static_cast<size_t>(a_rows),
+        static_cast<size_t>(a_cols),
+        static_cast<size_t>(b_rows),
+        static_cast<size_t>(b_cols)
+    };
 }
 
