@@ -5,7 +5,7 @@
 #   $(VARIABLE:OLD_SUFFIX=NEW_SUFFIX)
 
 CPP = mpicxx
-CFLAGS = -Wall -O3 -std=c++17
+CFLAGS = -Wall -g -std=c++17
 INCLUDE = .
 LDFLAGS=
 LIBS=
@@ -59,11 +59,14 @@ DEBUG_DATA_DIR = ~/matrix_mult_para/data
 PROJECT_DIR = /mnt/home/s_bruchpa/matrix_mult_para
 
 PARTITION = small-hp
-N_PROCS = 256
-N_HOSTS = 8
+RELEASE_N_PROCS = 256
+RELEASE_N_HOSTS = 8
+RELEASE_CORES = 2
+N_PROCS = 2
+N_HOSTS = 1
 CORES = 2
 TIMEOUT = 20:00
-SRUN_CMD = srun -n $(N_PROCS) -N $(N_HOSTS) -p $(PARTITION) -c $(CORES) -m cyclic --time=$(TIMEOUT)
+SRUN_CMD = srun -n $(N_PROCS) -N $(N_HOSTS) -p $(PARTITION) -c $(CORES) --distribution cyclic --time=$(TIMEOUT)
 
 DEBUG_MATRIX_A = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.a
 DEBUG_MATRIX_B = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.b
@@ -83,7 +86,7 @@ test:
 	@$(SSH_CMD) "cd $(PROJECT_DIR); ./test.sh"
 
 run:
-	@echo "Running $(EXECUTABLE) $(ARGS)"
+	@echo "Running $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
 
 # Cleaning Stuff
