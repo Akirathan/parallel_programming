@@ -39,10 +39,13 @@ int main(int argc, char **argv)
     int workers_count = tasks_count - 1;
     int rank = get_rank();
 
-    if (rank == 0)
-        master_task(argv, workers_count);
-    else
+    if (rank == 0) {
+        Master master{workers_count, argv};
+        master.run();
+    }
+    else {
         worker_task(rank);
+    }
 
     CHECK(MPI_Finalize());
 }
