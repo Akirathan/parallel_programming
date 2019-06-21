@@ -1,6 +1,7 @@
 *.vscode/
 *.idea/
 *cmake-build-debug/
+*try.cpp
 
 k_means/data/
 potential/data/
