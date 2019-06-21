@@ -64,6 +64,39 @@ void Master::sendBlocksToWorkers()
     }
 }
 
+/**
+ * Parameters represent submatrix in result matrix. We need to determine sizes of row stripe from matrix A
+ * and column stripe from matrix B, send these stripes to some worker which will multiple these stripes and
+ * as a result of this multiplication we get the submatrix represented by parameters.
+ * @param res_start_row
+ * @param res_end_row
+ * @param res_start_col
+ * @param res_end_col
+ */
+void Master::sendBlocksCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
+        size_t res_end_col)
+{
+    size_t a_start_row = res_start_row;
+    size_t a_end_row = res_end_row;
+    size_t a_start_col = 0;
+
+    size_t b_start_row = 0;
+    size_t b_start_col = res_start_col;
+    size_t b_end_col = res_end_col;
+
+    size_t block_len = mMatricesSizes.a_cols;
+
+    FlatMatrix<float> a_stripe = mMatrix1Reader.loadStripe(a_start_row, a_start_col, block_len, a_end_row - a_start_row);
+    FlatMatrix<float> b_stripe = mMatrix2Reader.loadStripe(b_start_row, b_start_col, b_end_col - b_start_col, block_len);
+
+    sendToWorker(a_stripe.getBuffer(), a_stripe.getTotalSize(), MPI_FLOAT, mActualWorker);
+    sendToWorker(b_stripe.getBuffer(), b_stripe.getTotalSize(), MPI_FLOAT, mActualWorker);
+
+    mActualWorker++;
+    if (mActualWorker >= mWorkersCount)
+        mActualWorker = 1;
+}
+
 block_sizes_t Master::determineBlockSizes(size_t a_cols) const
 {
     return block_sizes_t {
