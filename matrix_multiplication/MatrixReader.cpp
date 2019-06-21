@@ -6,16 +6,16 @@
 #include <fstream>
 
 MatrixReader::MatrixReader(const std::string &file_name)
-    : mFile{file_name},
+    : mFile{file_name, std::ios::in | std::ios::binary},
     mColsCount{0},
     mRowsCount{0}
 {
     int32_t cols;
-    mFile >> cols;
+    mFile.read((char *)&cols, sizeof(int32_t));
     mColsCount = static_cast<size_t>(cols);
 
     int32_t rows;
-    mFile >> rows;
+    mFile.read((char *)&rows, sizeof(int32_t));
     mRowsCount = static_cast<size_t>(rows);
 }
 
