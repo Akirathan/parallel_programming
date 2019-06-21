@@ -15,11 +15,19 @@ set(SOURCES
         main.cpp
         MatrixReader.cpp
         MatrixReader.hpp
-        exception.hpp)
+        exception.hpp
+        common.hpp
+        worker.hpp
+        master.hpp
+        worker.cpp
+        master.cpp
+        )
 
 add_executable(${PROJECT_NAME}
         ${SOURCES}
         )
+
+add_executable(try try.cpp)
 
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 

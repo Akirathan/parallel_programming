@@ -4,20 +4,22 @@
 # Substitution references:
 #   $(VARIABLE:OLD_SUFFIX=NEW_SUFFIX)
 
-CPP=mpicxx
-CFLAGS=-Wall -O3 -std=c++17
-INCLUDE=.
+CPP = mpicxx
+CFLAGS = -Wall -O3 -std=c++17
+INCLUDE = .
 LDFLAGS=
 LIBS=
 LIBDIRS=
 SOURCES = \
 	MatrixReader.cpp \
+	master.cpp \
+	worker.cpp \
 	main.cpp
 
 OBJECTS = $(SOURCES:.cpp=.o)
 
-HEADERS=$(shell find . -name '*.hpp')
-EXECUTABLE=./matrix_mult
+HEADERS = $(shell find . -name '*.hpp')
+EXECUTABLE = ./matrix_mult
 
 COMPILE_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $< -c -o $@
 LINK_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $^ -o $@
@@ -43,7 +45,12 @@ FILES = \
 	main.cpp \
 	exception.hpp \
 	MatrixReader.hpp \
-	MatrixReader.cpp
+	MatrixReader.cpp \
+	common.hpp \
+	worker.hpp \
+	worker.cpp \
+	master.hpp \
+	master.cpp
 
 SSH_CMD = ssh parlab
 
