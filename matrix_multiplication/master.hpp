@@ -6,6 +6,7 @@
 #define MATRIX_MULT_MASTER_HPP
 
 #include "common.hpp"
+#include "MatrixReader.hpp"
 
 class Master {
 public:
@@ -13,13 +14,16 @@ public:
     void run();
 
 private:
+    MatrixReader mMatrix1Reader;
+    MatrixReader mMatrix2Reader;
     matrices_sizes_t mMatricesSizes;
     block_sizes_t mBlockSizes;
     int mWorkersCount;
+    int mActualWorker;
 
-    void sendMatricesSizesToWorkers();
+    void sendMatricesSizesToAllWorkers();
     void sendBlocksToWorkers();
-    block_sizes_t determineBlockSizes(size_t a_cols);
+    block_sizes_t determineBlockSizes(size_t a_cols) const;
     void sendToWorker(const void *buf, int count, MPI_Datatype datatype, int destination_rank) const;
 };
 

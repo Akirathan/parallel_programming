@@ -11,22 +11,20 @@
 static constexpr size_t ROWS_BLOCK_SIZE = 32;
 static constexpr size_t COLS_BLOCK_SIZE = 32;
 
-Master::Master(int workers_count, char **argv)
-    : mMatricesSizes{0, 0, 0, 0},
-    mWorkersCount{workers_count}
+Master::Master(int workers_count, char **argv) :
+        mMatrix1Reader{argv[1]},
+        mMatrix2Reader{argv[2]},
+        mMatricesSizes{0, 0, 0, 0},
+        mWorkersCount{workers_count},
+        mActualWorker{1}
 {
-    std::string matrix1_filename{argv[1]};
-    std::string matrix2_filename{argv[2]};
     std::string result_filename{argv[3]};
 
-    MatrixReader matrix1_reader{matrix1_filename};
-    MatrixReader matrix2_reader{matrix2_filename};
-
     mMatricesSizes = {
-            matrix1_reader.getRowsCount(), // a_rows
-            matrix1_reader.getColsCount(), // a_cols
-            matrix2_reader.getRowsCount(), // b_rows
-            matrix2_reader.getColsCount()  // b_cols
+            mMatrix1Reader.getRowsCount(), // a_rows
+            mMatrix1Reader.getColsCount(), // a_cols
+            mMatrix2Reader.getRowsCount(), // b_rows
+            mMatrix2Reader.getColsCount()  // b_cols
     };
 
     mBlockSizes = determineBlockSizes(mMatricesSizes.a_cols);
@@ -41,10 +39,10 @@ Master::Master(int workers_count, char **argv)
 
 void Master::run()
 {
-    sendMatricesSizesToWorkers();
+    sendMatricesSizesToAllWorkers();
 }
 
-void Master::sendMatricesSizesToWorkers()
+void Master::sendMatricesSizesToAllWorkers()
 {
     if (DEBUG)
         std::cout << "Master: sending sizes of matrices to all workers." << std::endl;
@@ -66,7 +64,7 @@ void Master::sendBlocksToWorkers()
     }
 }
 
-block_sizes_t Master::determineBlockSizes(size_t a_cols)
+block_sizes_t Master::determineBlockSizes(size_t a_cols) const
 {
     return block_sizes_t {
             ROWS_BLOCK_SIZE, // rows_block_size
