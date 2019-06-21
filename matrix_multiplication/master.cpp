@@ -27,9 +27,7 @@ void master_task(char **argv, int workers_count)
             matrix1_reader.getRowsCount(), // a_rows
             matrix1_reader.getColsCount(), // a_cols
             matrix2_reader.getRowsCount(), // b_rows
-            matrix2_reader.getColsCount(), // b_cols
-            matrix1_reader.getRowsCount(), // result_rows
-            matrix2_reader.getColsCount()  // result_cols
+            matrix2_reader.getColsCount()  // b_cols
     };
 
     send_matrices_sizes_to_workers(matrices_sizes, workers_count);

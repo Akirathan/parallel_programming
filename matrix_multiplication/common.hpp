@@ -38,6 +38,15 @@ struct matrices_sizes_t {
     size_t b_cols;
     size_t result_rows;
     size_t result_cols;
+
+    matrices_sizes_t(size_t a_rows, size_t a_cols, size_t b_rows, size_t b_cols)
+        : a_rows{a_rows},
+        a_cols{a_cols},
+        b_rows{b_rows},
+        b_cols{b_cols},
+        result_rows{a_rows},
+        result_cols{b_cols}
+    {}
 };
 
 inline void _mpi_check(int err, int line, const char *src_file, const char *err_msg = nullptr)
