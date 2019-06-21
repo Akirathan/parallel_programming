@@ -1,13 +1,26 @@
+# $@ ... name of file being generated
+# $^ ... all prerequisities
+# $< ... first prerequisite
+# Substitution references:
+#   $(VARIABLE:OLD_SUFFIX=NEW_SUFFIX)
+
 CPP=mpicxx
 CFLAGS=-Wall -O3 -std=c++17
 INCLUDE=.
 LDFLAGS=
 LIBS=
 LIBDIRS=
-SOURCE=main.cpp
+SOURCES = \
+	MatrixReader.cpp \
+	main.cpp
+
+OBJECTS = $(SOURCES:.cpp=.o)
+
 HEADERS=$(shell find . -name '*.hpp')
 EXECUTABLE=./matrix_mult
 
+COMPILE_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $< -c -o $@
+LINK_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $^ -o $@
 
 .PHONY: all clear clean purge
 
@@ -15,9 +28,13 @@ all: $(EXECUTABLE)
 
 # Building Targets
 
-$(EXECUTABLE): $(SOURCE) $(HEADERS)
-	@echo Compiling and linking executable "$@" ...
-	@$(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $< -o $@
+$(EXECUTABLE): $(OBJECTS)
+	$(LINK_CMD)
+
+$(OBJECTS): $(SOURCES) $(HEADERS)
+
+%.o: %.cpp
+	$(COMPILE_CMD)
 
 #######################################
 
