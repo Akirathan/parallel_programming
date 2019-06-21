@@ -21,7 +21,7 @@ set(SOURCES
         master.hpp
         worker.cpp
         master.cpp
-        )
+        FlatMatrix.hpp)
 
 add_executable(${PROJECT_NAME}
         ${SOURCES}
