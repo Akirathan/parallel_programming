@@ -6,7 +6,7 @@
 #include "common.hpp"
 #include <iostream>
 
-static void receive_from_master(void *buf, int count, MPI_Datatype datatype);
+static int receive_from_master(void *buf, int max_count, MPI_Datatype datatype);
 static stripes_t receive_stripes_from_master(const block_sizes_t &block_sizes);
 static matrices_sizes_t receive_matrices_sizes_from_master();
 
@@ -15,10 +15,20 @@ void worker_task(int rank)
     matrices_sizes_t matrices_sizes = receive_matrices_sizes_from_master();
 }
 
-static void receive_from_master(void *buf, int count, MPI_Datatype datatype)
+/**
+ * @param buf Pointer to buffer.
+ * @param max_count Maximum number of bytes to be received.
+ * @param datatype
+ * @return Number of bytes received from master
+ */
+static int receive_from_master(void *buf, int max_count, MPI_Datatype datatype)
 {
     MPI_Status status{};
-    CHECK(MPI_Recv(buf, count, datatype, MASTER_RANK, static_cast<int>(Tag::from_master), MPI_COMM_WORLD, &status));
+    CHECK(MPI_Recv(buf, max_count, datatype, MASTER_RANK, static_cast<int>(Tag::from_master), MPI_COMM_WORLD, &status));
+
+    int received_count = 0;
+    CHECK(MPI_Get_count(&status, datatype, &received_count));
+    return received_count;
 }
 
 static stripes_t receive_stripes_from_master(const block_sizes_t &block_sizes)
