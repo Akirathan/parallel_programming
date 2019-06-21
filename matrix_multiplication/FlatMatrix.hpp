@@ -15,21 +15,25 @@
 template <typename T>
 class FlatMatrix {
 public:
-    FlatMatrix(T *buf, size_t rows_count, size_t cols_count)
-        : mBuf{buf},
+    FlatMatrix(T *buf, size_t rows_count, size_t cols_count) :
         mColsCount{cols_count},
         mRowsCount{rows_count},
-        mTotalSize{rows_count * cols_count}
+        mTotalSize{rows_count * cols_count},
+        mContent{buf, buf + mTotalSize}
+    {}
+
+    FlatMatrix(const std::vector<T> &vec, size_t rows_count, size_t cols_count) :
+        FlatMatrix(&vec[0], rows_count, cols_count)
     {}
 
     T * getBuffer()
     {
-        return mBuf;
+        return mContent;
     }
 
     const T * getBuffer() const
     {
-        return mBuf;
+        return mContent;
     }
 
     size_t getTotalSize() const
@@ -39,19 +43,19 @@ public:
 
     T & at(size_t row, size_t col)
     {
-        return mBuf[getFlatIndex(row, col)];
+        return mContent[getFlatIndex(row, col)];
     }
 
     const T & at(size_t row, size_t col) const
     {
-        return mBuf[getFlatIndex(row, col)];
+        return mContent[getFlatIndex(row, col)];
     }
 
 private:
-    T *mBuf;
     size_t mColsCount;
     size_t mRowsCount;
     size_t mTotalSize;
+    std::vector<T> mContent;
 
     size_t getFlatIndex(size_t row, size_t col) const
     {
