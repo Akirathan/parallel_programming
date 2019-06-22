@@ -3,10 +3,12 @@
 //
 
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <unistd.h>
 #include "exception.hpp"
 #include "FlatMatrix.hpp"
 #include "MatrixReader.hpp"
@@ -19,6 +21,14 @@ using test_t = std::pair<std::string, std::function<void(void)>>;
 
 #define _assert(condition) _assert_msg(condition, "")
 
+
+static bool is_local()
+{
+    char hostname[50] = {};
+    int err = gethostname(hostname, 50);
+    _assert_msg(err == 0, "gethostname call failed");
+    return std::strcmp(hostname, "mayfa-PC") == 0;
+}
 
 static void test_flat_matrix()
 {
@@ -51,6 +61,37 @@ static void matrix_reader_rectangle_test(const std::vector<std::vector<float>> &
         }
     }
 }
+
+static void hmatrix_stripes_fit_in_memory()
+{
+    if (is_local())
+        return;
+
+    std::string matrix_a_file_name = "/mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.a";
+    std::string matrix_b_file_name = "/mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.b";
+
+    //std::string lmatrix_file_name = "/mnt/home/_teaching/para/03-matrixmul-mpi/data/lmatrix.a";
+
+    MatrixReader matrix_a_reader{matrix_a_file_name};
+    std::cout << "\thmatrix.a rows=" << matrix_a_reader.getRowsCount() << ", cols=" << matrix_a_reader.getColsCount()
+              << std::endl;
+
+    // Try loading just one line.
+    size_t a_stripe_width = matrix_a_reader.getColsCount();
+    size_t a_stripe_height = 64;
+    FlatMatrix<float> a_stripe = matrix_a_reader.loadRectangle(0, 0, a_stripe_width, a_stripe_height);
+    std::cout << "\tLoaded "<< a_stripe_height << " height stripe of hmatrix.a" << std::endl;
+
+    MatrixReader matrix_b_reader{matrix_b_file_name};
+    std::cout << "\thmatrix.b rows=" << matrix_b_reader.getRowsCount() << ", cols=" << matrix_b_reader.getColsCount()
+              << std::endl;
+
+    size_t b_stripe_width = 64;
+    size_t b_stripe_height = matrix_b_reader.getRowsCount();
+    FlatMatrix<float> b_stripe = matrix_b_reader.loadRectangle(0, 0, b_stripe_width, b_stripe_height);
+    std::cout << "\tLoaded " << b_stripe_width << " width stripe of hmatrix.b" << std::endl;
+}
+
 
 static void test_matrix_reader()
 {
@@ -97,7 +138,8 @@ static void run_one_test(const test_t &test)
 
 static std::vector<test_t> tests = {
         {"Flat matrix tests", test_flat_matrix},
-        {"Matrix reader tests", test_matrix_reader}
+        {"Matrix reader tests", test_matrix_reader},
+        {"Stripe fits in memory test", hmatrix_stripes_fit_in_memory}
 };
 
 int main()
