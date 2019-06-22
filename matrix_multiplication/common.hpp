@@ -51,6 +51,34 @@ struct matrices_sizes_t {
     {}
 };
 
+/**
+ * This message is send by master to workers and it represents two submatrices that should be multiplied on worker.
+ */
+struct submatrices_message_t {
+    int a_row_start;
+    /// Index of last row + 1 ie. this "points" behind the end of rows (as in iterator conventions).
+    int a_row_end;
+    int a_col_start;
+    int a_col_end;
+    int b_row_start;
+    int b_row_end;
+    int b_col_start; // 7
+    int b_col_end; // 8
+    float a_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
+    float b_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
+
+    size_t get_a_buffer_size() const
+    {
+        return (a_row_end - a_row_start) * (a_col_end - a_col_start);
+    }
+
+    size_t get_b_buffer_size() const
+    {
+        return (b_row_end - b_row_start) * (b_col_end - b_col_start);
+    }
+};
+
+
 inline void _mpi_check(int err, int line, const char *src_file, const char *err_msg = nullptr)
 {
     if (err != 0)
@@ -66,5 +94,7 @@ inline int get_rank()
     CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     return rank;
 }
+
+void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datatype);
 
 #endif //MATRIX_MULT_COMMON_HPP
