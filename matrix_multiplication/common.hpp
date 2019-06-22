@@ -11,6 +11,8 @@
 
 constexpr int MASTER_RANK = 0;
 constexpr bool DEBUG = true;
+constexpr size_t ROWS_MAX_BLOCK_SIZE = 32;
+constexpr size_t COLS_MAX_BLOCK_SIZE = 32;
 
 enum class Tag {
     from_master = 1,

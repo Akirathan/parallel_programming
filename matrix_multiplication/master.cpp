@@ -8,8 +8,6 @@
 #include "common.hpp"
 #include "MatrixReader.hpp"
 
-static constexpr size_t ROWS_BLOCK_SIZE = 32;
-static constexpr size_t COLS_BLOCK_SIZE = 32;
 
 Master::Master(int workers_count, char **argv) :
         mMatrix1Reader{argv[1]},
@@ -100,8 +98,8 @@ void Master::sendBlocksCorrespondingToResultBlock(size_t res_start_row, size_t r
 block_sizes_t Master::determineBlockSizes(size_t a_cols) const
 {
     return block_sizes_t {
-            ROWS_BLOCK_SIZE, // rows_block_size
-            COLS_BLOCK_SIZE, // cols_block_size
+            ROWS_MAX_BLOCK_SIZE, // rows_block_size
+            COLS_MAX_BLOCK_SIZE, // cols_block_size
             a_cols// length
     };
 }
