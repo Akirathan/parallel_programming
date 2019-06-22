@@ -43,6 +43,7 @@ $(OBJECTS): $(SOURCES) $(HEADERS)
 FILES = \
 	Makefile \
 	main.cpp \
+	FlatMatrix.hpp \
 	exception.hpp \
 	MatrixReader.hpp \
 	MatrixReader.cpp \
