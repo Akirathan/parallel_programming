@@ -161,6 +161,30 @@ static void test_create_data_structure()
     CHECK(MPI_Type_free(&new_type));
 }
 
+static void test_create_submatrices_message_datatype()
+{
+    CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+    MPI_Datatype submatrices_message_dt{};
+    create_submatrices_message_datatype(&submatrices_message_dt);
+    submatrices_message_t message {
+            1, 2, 3, 4, 5, 6, 7, 8, {1.1, 2.2, 3.3}, {4.4, 5.5, 6.6}
+    };
+
+    CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+    if (get_rank() == 0) {
+        CHECK(MPI_Send(&message, 1, submatrices_message_dt, 1, (int)Tag::from_master, MPI_COMM_WORLD));
+    }
+    else {
+        submatrices_message_t received_message{};
+        MPI_Status status{};
+        CHECK(MPI_Recv(&received_message, 1, submatrices_message_dt, 0, (int)Tag::from_master, MPI_COMM_WORLD, &status));
+
+        _assert_msg(received_message == message, "Received and sent messages should equal");
+    }
+}
+
 #endif // REMOTE
 
 
@@ -214,10 +238,12 @@ static void run_one_test(const test_t &test)
 
 static std::vector<test_t> tests = {
         {"Flat matrix tests", test_flat_matrix},
-        {"Matrix reader tests", test_matrix_reader},
-        {"Stripe fits in memory test", hmatrix_stripes_fit_in_memory}
+        {"Matrix reader tests", test_matrix_reader}
+        //{"Stripe fits in memory test", hmatrix_stripes_fit_in_memory}
+
 #ifdef REMOTE
         , {"Create new data structure", test_create_data_structure},
+        {"Create submatrices message datatype", test_create_submatrices_message_datatype}
 #endif // REMOTE
 };
 
