@@ -8,10 +8,17 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <unistd.h>
 #include "exception.hpp"
 #include "FlatMatrix.hpp"
 #include "MatrixReader.hpp"
+
+#define REMOTE
+#ifdef REMOTE
+#include <mpi.h>
+#include "common.hpp"
+#endif // REMOTE
 
 using test_t = std::pair<std::string, std::function<void(void)>>;
 
@@ -28,6 +35,18 @@ static bool is_local()
     int err = gethostname(hostname, 50);
     _assert_msg(err == 0, "gethostname call failed");
     return std::strcmp(hostname, "mayfa-PC") == 0;
+}
+
+template <typename T>
+static void print_buffer(const T *buffer, size_t size)
+{
+    std::cout << "[";
+    for (size_t i = 0; i < size; i++) {
+        if (i != size - 1)
+            std::cout << buffer[i] << ", ";
+        else
+            std::cout << buffer[i] << "]";
+    }
 }
 
 static void test_flat_matrix()
@@ -92,9 +111,66 @@ static void hmatrix_stripes_fit_in_memory()
     std::cout << "\tLoaded " << b_stripe_width << " width stripe of hmatrix.b" << std::endl;
 }
 
+#ifdef REMOTE
+
+struct buffer_t {
+    int size;
+    int content[10];
+    float f_content[10];
+};
+
+static void test_create_data_structure()
+{
+    // Create point data structure
+    int count = 3;
+    int block_lengths[] = {1, 10, 10};
+    MPI_Aint displacements[] = {0, 4, 44};
+    MPI_Datatype types[] = {MPI_INT, MPI_INT, MPI_FLOAT};
+    MPI_Datatype new_type;
+    CHECK(MPI_Type_create_struct(count, block_lengths, displacements, types, &new_type));
+    CHECK(MPI_Type_commit(&new_type));
+    std::cout << "Type commited" << std::endl;
+
+    int new_type_size = 0;
+    CHECK(MPI_Type_size(new_type, &new_type_size));
+    std::cout << "Size of new type = " << new_type_size << std::endl;
+
+    int rank = get_rank();
+    if (rank == 0) {
+        buffer_t buffer{3, {1,2,3}, {1.1, 2.2, 3.3}};
+        CHECK(MPI_Send(&buffer, 1, new_type, 1, (int)Tag::from_master, MPI_COMM_WORLD));
+    }
+    else {
+        buffer_t buffer{};
+        MPI_Status status{};
+        CHECK(MPI_Recv(&buffer, 1, new_type, 0, (int)Tag::from_master, MPI_COMM_WORLD, &status));
+
+        int element_count = 0;
+        CHECK(MPI_Get_elements(&status, new_type, &element_count));
+        std::cout << "MPI_Get_elements = " << element_count << std::endl;
+
+        std::cout << "Received buffer_t.size=" << buffer.size << ", buffer_t.content=[";
+        for (int i = 0; i < buffer.size; i++)
+            std::cout << buffer.content[i] << ", ";
+        std::cout << "], buffer_t.f_content=[";
+        for (int i = 0; i < buffer.size; i++)
+            std::cout << std::setw(3) << buffer.f_content[i] << ", ";
+        std::cout << "]" << std::endl;
+    }
+
+    CHECK(MPI_Type_free(&new_type));
+}
+
+#endif // REMOTE
+
 
 static void test_matrix_reader()
 {
+#ifdef REMOTE
+    if (get_rank() != 0)
+        return;
+#endif
+
     const std::string file_name = "./tmp_matrix.bin";
 
     std::vector<std::vector<float>> matrix = {
@@ -140,13 +216,24 @@ static std::vector<test_t> tests = {
         {"Flat matrix tests", test_flat_matrix},
         {"Matrix reader tests", test_matrix_reader},
         {"Stripe fits in memory test", hmatrix_stripes_fit_in_memory}
+#ifdef REMOTE
+        , {"Create new data structure", test_create_data_structure},
+#endif // REMOTE
 };
 
-int main()
+int main(int argc, char **argv)
 {
+#ifdef REMOTE
+    CHECK(MPI_Init(&argc, &argv));
+#endif
+
     std::cout << "Running all tests..." << std::endl;
     for (auto &&test : tests) {
         run_one_test(test);
     }
     std::cout << "All tests passed..." << std::endl;
+
+#ifdef REMOTE
+    CHECK(MPI_Finalize());
+#endif
 }
