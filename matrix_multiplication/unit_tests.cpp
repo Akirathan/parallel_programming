@@ -17,7 +17,7 @@ using test_t = std::pair<std::string, std::function<void(void)>>;
     if (!(condition)) \
         throw RuntimeError() << __FILE__ << ": " << __LINE__ << ": " << msg;
 
-#define _assert(condition) _assert_msg(condition, "");
+#define _assert(condition) _assert_msg(condition, "")
 
 
 static void test_flat_matrix()
@@ -39,6 +39,19 @@ static void write_matrix(const std::string &file_name, const std::vector<std::ve
     }
 }
 
+static void matrix_reader_rectangle_test(const std::vector<std::vector<float>> &matrix, MatrixReader &reader,
+                                         size_t upper_left_row, size_t upper_left_col, size_t width, size_t height)
+{
+    FlatMatrix<float> rectangle = reader.loadRectangle(upper_left_row, upper_left_col, width, height);
+    for (size_t rect_i = 0; rect_i < height; rect_i++) {
+        for (size_t rect_j = 0; rect_j < width; rect_j++) {
+            size_t total_i = rect_i + upper_left_row;
+            size_t total_j = rect_j + upper_left_col;
+            _assert(rectangle.at(rect_i, rect_j) == matrix[total_i][total_j]);
+        }
+    }
+}
+
 static void test_matrix_reader()
 {
     const std::string file_name = "./tmp_matrix.bin";
@@ -56,10 +69,12 @@ static void test_matrix_reader()
 
     _assert(reader.getColsCount() == cols);
     _assert(reader.getRowsCount() == rows);
-    FlatMatrix<float> read_matrix = reader.loadRectangle(0, 0, reader.getColsCount(), reader.getRowsCount());
-    for (size_t i = 0; i < reader.getRowsCount(); ++i)
-        for (size_t j = 0; j < reader.getColsCount(); ++j)
-            _assert(read_matrix.at(i, j) == matrix[i][j]);
+    // Test full matrix load.
+    matrix_reader_rectangle_test(matrix, reader, 0, 0, reader.getColsCount(), reader.getRowsCount());
+
+    // Test partial matrix read - read just submatrix.
+    matrix_reader_rectangle_test(matrix, reader, 1, 1, 2, 2);
+    matrix_reader_rectangle_test(matrix, reader, 1, 2, 2, 1);
 
     std::remove(file_name.c_str());
 }
