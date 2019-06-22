@@ -76,6 +76,34 @@ struct submatrices_message_t {
     {
         return (b_row_end - b_row_start) * (b_col_end - b_col_start);
     }
+
+    bool operator==(const submatrices_message_t &rhs) const
+    {
+        return a_row_start == rhs.a_row_start &&
+               a_row_end == rhs.a_row_end &&
+               a_col_start == rhs.a_col_start &&
+               a_col_end == rhs.a_col_end &&
+               b_row_start == rhs.b_row_start &&
+               b_row_end == rhs.b_row_end &&
+               b_col_start == rhs.b_col_start &&
+               b_col_end == rhs.b_col_end &&
+               buffers_equal(a_buffer, rhs.a_buffer, get_a_buffer_size()) &&
+               buffers_equal(b_buffer, rhs.b_buffer, get_b_buffer_size());
+    }
+
+    bool operator!=(const submatrices_message_t &rhs) const
+    {
+        return !(rhs == *this);
+    }
+
+private:
+    bool buffers_equal(const float *buff1, const float *buff2, size_t size) const
+    {
+        for (size_t i = 0; i < size; ++i)
+            if (buff1[i] != buff2[i])
+                return false;
+        return true;
+    }
 };
 
 
