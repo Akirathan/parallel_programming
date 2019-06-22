@@ -15,25 +15,41 @@
 template <typename T>
 class FlatMatrix {
 public:
-    FlatMatrix(const T *buf, size_t rows_count, size_t cols_count) :
+    /// Does not copy the content.
+    FlatMatrix(T *buf, size_t rows_count, size_t cols_count) :
         mColsCount{cols_count},
         mRowsCount{rows_count},
         mTotalSize{rows_count * cols_count},
-        mContent{buf, buf + mTotalSize}
+        mBuff{buf},
+        mAllocated{false}
     {}
 
+    /// Copies the contents of the vector.
     FlatMatrix(const std::vector<T> &vec, size_t rows_count, size_t cols_count) :
-        FlatMatrix<T>(&vec[0], rows_count, cols_count)
-    {}
+        mColsCount{cols_count},
+        mRowsCount{rows_count},
+        mTotalSize{rows_count * cols_count},
+        mBuff{nullptr},
+        mAllocated{true}
+    {
+        mBuff = new T[mTotalSize];
+        std::copy(vec.begin(), vec.end(), mBuff);
+    }
+
+    ~FlatMatrix()
+    {
+        if (mAllocated)
+            delete[] mBuff;
+    }
 
     T * getBuffer()
     {
-        return mContent;
+        return mBuff;
     }
 
     const T * getBuffer() const
     {
-        return mContent;
+        return mBuff;
     }
 
     size_t getTotalSize() const
@@ -43,19 +59,20 @@ public:
 
     T & at(size_t row, size_t col)
     {
-        return mContent[getFlatIndex(row, col)];
+        return mBuff[getFlatIndex(row, col)];
     }
 
     const T & at(size_t row, size_t col) const
     {
-        return mContent[getFlatIndex(row, col)];
+        return mBuff[getFlatIndex(row, col)];
     }
 
 private:
     size_t mColsCount;
     size_t mRowsCount;
     size_t mTotalSize;
-    std::vector<T> mContent;
+    T *mBuff;
+    bool mAllocated;
 
     size_t getFlatIndex(size_t row, size_t col) const
     {
