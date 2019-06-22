@@ -242,7 +242,8 @@ static std::vector<test_t> tests = {
         //{"Stripe fits in memory test", hmatrix_stripes_fit_in_memory}
 
 #ifdef REMOTE
-        , {"Create new data structure", test_create_data_structure},
+        ,
+        //{"Create new data structure", test_create_data_structure},
         {"Create submatrices message datatype", test_create_submatrices_message_datatype}
 #endif // REMOTE
 };
