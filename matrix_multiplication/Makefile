@@ -13,11 +13,13 @@ LIBDIRS=
 SOURCES = \
 	MatrixReader.cpp \
 	master.cpp \
+	common.cpp \
 	worker.cpp \
 	main.cpp
 
 UNIT_TEST_SOURCES = \
 	MatrixReader.cpp \
+	common.cpp \
 	unit_tests.cpp
 
 OBJECTS = $(SOURCES:.cpp=.o)
@@ -58,6 +60,7 @@ FILES = \
 	MatrixReader.hpp \
 	MatrixReader.cpp \
 	common.hpp \
+	common.cpp \
 	worker.hpp \
 	worker.cpp \
 	master.hpp \
