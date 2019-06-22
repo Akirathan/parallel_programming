@@ -16,7 +16,12 @@ SOURCES = \
 	worker.cpp \
 	main.cpp
 
+UNIT_TEST_SOURCES = \
+	MatrixReader.cpp \
+	unit_tests.cpp
+
 OBJECTS = $(SOURCES:.cpp=.o)
+UNIT_TEST_OBJECTS = $(UNIT_TEST_SOURCES:.cpp=.o)
 
 HEADERS = $(shell find . -name '*.hpp')
 EXECUTABLE = ./matrix_mult
@@ -35,6 +40,11 @@ $(EXECUTABLE): $(OBJECTS)
 
 $(OBJECTS): $(SOURCES) $(HEADERS)
 
+unit_tests: $(UNIT_TEST_OBJECTS)
+	$(LINK_CMD)
+
+$(UNIT_TEST_OBJECTS): $(UNIT_TEST_SOURCES) $(HEADERS)
+
 %.o: %.cpp
 	$(COMPILE_CMD)
 
@@ -51,7 +61,8 @@ FILES = \
 	worker.hpp \
 	worker.cpp \
 	master.hpp \
-	master.cpp
+	master.cpp \
+	unit_tests.cpp
 
 SSH_CMD = ssh parlab
 
@@ -81,6 +92,14 @@ send_files:
 compile: send_files
 	@echo "Compiling..."
 	@$(SSH_CMD) "cd $(PROJECT_DIR); srun make"
+
+compile_unit_tests: send_files
+	@echo "Compiling unit tests..."
+	@$(SSH_CMD) "cd $(PROJECT_DIR); srun make unit_tests"
+
+run_unit_tests:
+	@echo "Running srun unit_tests"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); srun ./unit_tests"
 
 test:
 	@echo "Running testing script..."
