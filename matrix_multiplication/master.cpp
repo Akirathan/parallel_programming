@@ -55,10 +55,21 @@ void Master::sendMatricesSizesToAllWorkers()
 
 void Master::sendBlocksToWorkers()
 {
-    size_t start_row = 0;
-    size_t end_row = std::min(start_row + ROWS_BLOCK_SIZE, mMatricesSizes.result_rows);
-    while (start_row != mMatricesSizes.result_rows) {
+    size_t res_start_row = 0;
+    size_t res_end_row = std::min(ROWS_MAX_BLOCK_SIZE, mMatricesSizes.result_rows);
+    while (res_start_row < mMatricesSizes.result_rows)
+    {
+        size_t res_start_col = 0;
+        size_t res_end_col = std::min(COLS_MAX_BLOCK_SIZE, mMatricesSizes.result_cols);
+        while (res_start_col < mMatricesSizes.result_cols)
+        {
+            sendStripesCorrespondingToResultBlock(res_start_row, res_end_row, res_start_col, res_end_col);
+            res_start_col = res_end_col;
+            res_end_col = std::min(res_end_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.result_cols);
+        }
 
+        res_start_row = res_end_row;
+        res_end_row = std::min(res_end_row + ROWS_MAX_BLOCK_SIZE, mMatricesSizes.result_rows);
     }
 }
 
@@ -71,8 +82,8 @@ void Master::sendBlocksToWorkers()
  * @param res_start_col
  * @param res_end_col
  */
-void Master::sendBlocksCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
-        size_t res_end_col)
+void Master::sendStripesCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
+                                                   size_t res_end_col)
 {
     size_t a_start_row = res_start_row;
     size_t a_end_row = res_end_row;
@@ -84,9 +95,17 @@ void Master::sendBlocksCorrespondingToResultBlock(size_t res_start_row, size_t r
 
     size_t block_len = mMatricesSizes.a_cols;
 
-    FlatMatrix<float> a_stripe = mMatrix1Reader.loadStripe(a_start_row, a_start_col, block_len, a_end_row - a_start_row);
-    FlatMatrix<float> b_stripe = mMatrix2Reader.loadStripe(b_start_row, b_start_col, b_end_col - b_start_col, block_len);
+    FlatMatrix<float> a_stripe = mMatrix1Reader.loadRectangle(a_start_row, a_start_col, block_len,
+                                                              a_end_row - a_start_row);
+    FlatMatrix<float> b_stripe = mMatrix2Reader.loadRectangle(b_start_row, b_start_col, b_end_col - b_start_col,
+                                                              block_len);
 
+    if (DEBUG)
+        std::cout << "Master: Sending A stripe(start_row=" << a_start_row << ", end_row=" << a_end_row
+                  << "), B stripe(start_col=" << b_start_col << ", end_col=" << b_start_col << ")"
+                  << " to worker with rank " << mActualWorker
+                  << std::endl;
+    // TODO: Poslat velikosti a_stripe a b_stripe
     sendToWorker(a_stripe.getBuffer(), a_stripe.getTotalSize(), MPI_FLOAT, mActualWorker);
     sendToWorker(b_stripe.getBuffer(), b_stripe.getTotalSize(), MPI_FLOAT, mActualWorker);
 

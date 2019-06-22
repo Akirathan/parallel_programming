@@ -26,8 +26,8 @@ private:
     block_sizes_t determineBlockSizes(size_t a_cols) const;
     void sendToWorker(const void *buf, int count, MPI_Datatype datatype, int destination_rank) const;
 
-    void sendBlocksCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
-                                              size_t res_end_col);
+    void sendStripesCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
+                                               size_t res_end_col);
 };
 
 #endif //MATRIX_MULT_MASTER_HPP
