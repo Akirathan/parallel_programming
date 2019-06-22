@@ -82,6 +82,7 @@ N_HOSTS = 1
 CORES = 2
 TIMEOUT = 20:00
 SRUN_CMD = srun -n $(N_PROCS) -N $(N_HOSTS) -p $(PARTITION) -c $(CORES) --distribution cyclic --time=$(TIMEOUT)
+UNIT_TEST_SRUN_CMD = srun -n 2 -N 1 -p $(PARTITION) -c 2 --distribution cyclic --time=$(TIMEOUT)
 
 DEBUG_MATRIX_A = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.a
 DEBUG_MATRIX_B = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.b
@@ -101,8 +102,8 @@ compile_unit_tests: send_files
 	@$(SSH_CMD) "cd $(PROJECT_DIR); srun make unit_tests"
 
 run_unit_tests:
-	@echo "Running srun unit_tests"
-	@$(SSH_CMD) "cd $(PROJECT_DIR); srun ./unit_tests"
+	@echo "Running $(UNIT_TEST_SRUN_CMD) unit_tests"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(UNIT_TEST_SRUN_CMD) ./unit_tests"
 
 test:
 	@echo "Running testing script..."
