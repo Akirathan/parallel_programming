@@ -15,7 +15,7 @@
 template <typename T>
 class FlatMatrix {
 public:
-    FlatMatrix(T *buf, size_t rows_count, size_t cols_count) :
+    FlatMatrix(const T *buf, size_t rows_count, size_t cols_count) :
         mColsCount{cols_count},
         mRowsCount{rows_count},
         mTotalSize{rows_count * cols_count},
@@ -23,7 +23,7 @@ public:
     {}
 
     FlatMatrix(const std::vector<T> &vec, size_t rows_count, size_t cols_count) :
-        FlatMatrix(&vec[0], rows_count, cols_count)
+        FlatMatrix<T>(&vec[0], rows_count, cols_count)
     {}
 
     T * getBuffer()
