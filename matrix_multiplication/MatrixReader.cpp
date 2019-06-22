@@ -42,6 +42,8 @@ FlatMatrix<float> MatrixReader::loadRectangle(size_t upper_left_row, size_t uppe
 
         size_t elems_in_rest_of_row = mColsCount - (upper_left_col + width);
         mFile.seekg(elems_in_rest_of_row * sizeof(float), std::ios::cur);
+
+        stripe_idx += width;
     }
 
     return FlatMatrix<float>(stripe, height, width);
