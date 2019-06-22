@@ -77,6 +77,26 @@ struct submatrices_message_t {
         return (b_row_end - b_row_start) * (b_col_end - b_col_start);
     }
 
+    size_t get_a_rows_count() const
+    {
+        return a_row_end - a_row_start;
+    }
+
+    size_t get_a_cols_count() const
+    {
+        return a_col_end - a_col_start;
+    }
+
+    size_t get_b_rows_count() const
+    {
+        return b_row_end - b_row_start;
+    }
+
+    size_t get_b_cols_count() const
+    {
+        return b_col_end - b_col_start;
+    }
+
     bool operator==(const submatrices_message_t &rhs) const
     {
         return a_row_start == rhs.a_row_start &&
