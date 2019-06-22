@@ -2,6 +2,7 @@
 // Created by pal on 21.6.19.
 //
 
+#include <cstdio>
 #include <functional>
 #include <vector>
 #include <fstream>
@@ -14,9 +15,9 @@ using test_t = std::pair<std::string, std::function<void(void)>>;
 
 #define _assert_msg(condition, msg) \
     if (!(condition)) \
-        throw RuntimeError() << __FILE__ << ": " << __LINE__ << ": " << msg
+        throw RuntimeError() << __FILE__ << ": " << __LINE__ << ": " << msg;
 
-#define _assert(condition) _assert_msg(condition, "")
+#define _assert(condition) _assert_msg(condition, "");
 
 
 static void test_flat_matrix()
@@ -40,7 +41,7 @@ static void write_matrix(const std::string &file_name, const std::vector<std::ve
 
 static void test_matrix_reader()
 {
-    const std::string file_name = "/home/pal/dev/parallel_programming/matrix_multiplication/exec/matrix";
+    const std::string file_name = "./tmp_matrix.bin";
 
     std::vector<std::vector<float>> matrix = {
             {1, 2, 3, 23},
@@ -59,6 +60,8 @@ static void test_matrix_reader()
     for (size_t i = 0; i < reader.getRowsCount(); ++i)
         for (size_t j = 0; j < reader.getColsCount(); ++j)
             _assert(read_matrix.at(i, j) == matrix[i][j]);
+
+    std::remove(file_name.c_str());
 }
 
 static void run_one_test(const test_t &test)
