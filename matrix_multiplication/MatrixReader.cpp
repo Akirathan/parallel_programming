@@ -31,6 +31,10 @@ size_t MatrixReader::getRowsCount() const
 
 FlatMatrix<float> MatrixReader::loadRectangle(size_t upper_left_row, size_t upper_left_col, size_t width, size_t height)
 {
+    // Skip first rows.
+    resetFilePositionToMatrixContent();
+    mFile.seekg(upper_left_row * mColsCount * sizeof(float), std::ios::cur);
+
     std::vector<float> stripe(width * height);
     size_t stripe_idx = 0;
     for (size_t row = upper_left_row; row < upper_left_row + height; ++row) {
@@ -47,4 +51,9 @@ FlatMatrix<float> MatrixReader::loadRectangle(size_t upper_left_row, size_t uppe
     }
 
     return FlatMatrix<float>(stripe, height, width);
+}
+
+void MatrixReader::resetFilePositionToMatrixContent()
+{
+    mFile.seekg(2 * sizeof(int32_t), std::ios::beg);
 }

@@ -21,6 +21,8 @@ private:
     std::ifstream mFile;
     size_t mColsCount;
     size_t mRowsCount;
+
+    void resetFilePositionToMatrixContent();
 };
 
 
