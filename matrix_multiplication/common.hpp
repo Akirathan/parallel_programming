@@ -7,6 +7,7 @@
 
 #include <mpi.h>
 #include <vector>
+#include <ostream>
 #include "exception.hpp"
 
 constexpr int MASTER_RANK = 0;
@@ -67,63 +68,26 @@ struct submatrices_message_t {
     float a_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
     float b_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
 
-    size_t get_a_buffer_size() const
-    {
-        return (a_row_end - a_row_start) * (a_col_end - a_col_start);
-    }
-
-    size_t get_b_buffer_size() const
-    {
-        return (b_row_end - b_row_start) * (b_col_end - b_col_start);
-    }
-
-    size_t get_a_rows_count() const
-    {
-        return a_row_end - a_row_start;
-    }
-
-    size_t get_a_cols_count() const
-    {
-        return a_col_end - a_col_start;
-    }
-
-    size_t get_b_rows_count() const
-    {
-        return b_row_end - b_row_start;
-    }
-
-    size_t get_b_cols_count() const
-    {
-        return b_col_end - b_col_start;
-    }
-
-    bool operator==(const submatrices_message_t &rhs) const
-    {
-        return a_row_start == rhs.a_row_start &&
-               a_row_end == rhs.a_row_end &&
-               a_col_start == rhs.a_col_start &&
-               a_col_end == rhs.a_col_end &&
-               b_row_start == rhs.b_row_start &&
-               b_row_end == rhs.b_row_end &&
-               b_col_start == rhs.b_col_start &&
-               b_col_end == rhs.b_col_end &&
-               buffers_equal(a_buffer, rhs.a_buffer, get_a_buffer_size()) &&
-               buffers_equal(b_buffer, rhs.b_buffer, get_b_buffer_size());
-    }
-
-    bool operator!=(const submatrices_message_t &rhs) const
-    {
-        return !(rhs == *this);
-    }
+    size_t get_a_buffer_size() const;
+    size_t get_b_buffer_size() const;
+    size_t get_a_rows_count() const;
+    size_t get_a_cols_count() const;
+    size_t get_b_rows_count() const;
+    size_t get_b_cols_count() const;
+    bool operator==(const submatrices_message_t &rhs) const;
+    bool operator!=(const submatrices_message_t &rhs) const;
+    friend std::ostream &operator<<(std::ostream &os, const submatrices_message_t &message);
 
 private:
-    bool buffers_equal(const float *buff1, const float *buff2, size_t size) const
-    {
-        for (size_t i = 0; i < size; ++i)
-            if (buff1[i] != buff2[i])
-                return false;
-        return true;
-    }
+    bool buffers_equal(const float *buff1, const float *buff2, size_t size) const;
+};
+
+struct result_submatrix_message_t {
+    int result_row_start;
+    int result_row_end;
+    int result_col_start;
+    int result_col_end;
+    float result_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
 };
 
 

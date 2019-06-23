@@ -52,7 +52,7 @@ void Master::run()
 void Master::sendMatricesSizesToAllWorkers()
 {
     if (DEBUG)
-        std::cout << "Master: sending sizes of matrices to all workers." << std::endl;
+        std::cout << "Master: Sending sizes of matrices to all workers." << std::endl;
 
     for (int worker_rank = 1; worker_rank < mWorkersCount + 1; worker_rank++) {
         sendToWorker(&mMatricesSizes.a_rows, 1, MPI_INT, worker_rank);
@@ -60,6 +60,9 @@ void Master::sendMatricesSizesToAllWorkers()
         sendToWorker(&mMatricesSizes.b_rows, 1, MPI_INT, worker_rank);
         sendToWorker(&mMatricesSizes.b_cols, 1, MPI_INT, worker_rank);
     }
+
+    if (DEBUG)
+        std::cout << "Master: Sizes of all matrices sent to all workers." << std::endl;
 }
 
 void Master::sendBlocksToWorkers()
