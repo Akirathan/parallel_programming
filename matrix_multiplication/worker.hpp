@@ -27,6 +27,7 @@ private:
     result_submatrix_message_t multiplySubmatrices(submatrices_message_t &submatrices);
     void sendResult(result_submatrix_message_t &message);
     int receiveFromMaster(void *buf, int max_count, MPI_Datatype datatype) const;
+    void sendToMaster(const void *buf, int count, MPI_Datatype datatype) const;
 };
 
 #endif //MATRIX_MULT_WORKER_HPP

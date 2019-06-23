@@ -115,7 +115,7 @@ result_submatrix_message_t Worker::multiplySubmatrices(submatrices_message_t &su
 
 void Worker::sendResult(result_submatrix_message_t &message)
 {
-
+    sendToMaster(&message, 1, mResultMessageDatatype);
 }
 
 /**
@@ -132,5 +132,10 @@ int Worker::receiveFromMaster(void *buf, int max_count, MPI_Datatype datatype) c
     int received_count = 0;
     CHECK(MPI_Get_count(&status, datatype, &received_count));
     return received_count;
+}
+
+void Worker::sendToMaster(const void *buf, int count, MPI_Datatype datatype) const
+{
+    CHECK(MPI_Send(buf, count, datatype, MASTER_RANK, static_cast<int>(Tag::from_worker), MPI_COMM_WORLD));
 }
 
