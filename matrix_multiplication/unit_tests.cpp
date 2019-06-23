@@ -183,6 +183,34 @@ static void test_create_submatrices_message_datatype()
 
         _assert_msg(received_message == message, "Received and sent messages should equal");
     }
+
+    CHECK(MPI_Barrier(MPI_COMM_WORLD));
+}
+
+static void test_create_result_message_datatype()
+{
+    CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+    MPI_Datatype result_message_dt{};
+    create_result_message_datatype(&result_message_dt);
+    result_submatrix_message_t message {
+        1, 2, 3, 4, {1.1, 2.2, 3.3, 4.4, 5.5}
+    };
+
+    CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+    if (get_rank() == 0) {
+        CHECK(MPI_Send(&message, 1, result_message_dt, 1, (int)Tag::from_master, MPI_COMM_WORLD));
+    }
+    else {
+        result_submatrix_message_t received_message{};
+        MPI_Status status{};
+        CHECK(MPI_Recv(&received_message, 1, result_message_dt, 0, (int)Tag::from_master, MPI_COMM_WORLD, &status));
+
+        _assert_msg(received_message == message, "Received and sent messages should equal");
+    }
+
+    CHECK(MPI_Barrier(MPI_COMM_WORLD));
 }
 
 #endif // REMOTE
@@ -244,7 +272,8 @@ static std::vector<test_t> tests = {
 #ifdef REMOTE
         ,
         //{"Create new data structure", test_create_data_structure},
-        {"Create submatrices message datatype", test_create_submatrices_message_datatype}
+        {"Create submatrices message datatype", test_create_submatrices_message_datatype},
+        {"Create result message datatype", test_create_result_message_datatype}
 #endif // REMOTE
 };
 

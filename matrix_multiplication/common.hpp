@@ -77,9 +77,6 @@ struct submatrices_message_t {
     bool operator==(const submatrices_message_t &rhs) const;
     bool operator!=(const submatrices_message_t &rhs) const;
     friend std::ostream &operator<<(std::ostream &os, const submatrices_message_t &message);
-
-private:
-    bool buffers_equal(const float *buff1, const float *buff2, size_t size) const;
 };
 
 struct result_submatrix_message_t {
@@ -91,6 +88,8 @@ struct result_submatrix_message_t {
 
     size_t get_result_rows_count() const;
     size_t get_result_cols_count() const;
+    bool operator==(const result_submatrix_message_t &rhs) const;
+    bool operator!=(const result_submatrix_message_t &rhs) const;
 };
 
 

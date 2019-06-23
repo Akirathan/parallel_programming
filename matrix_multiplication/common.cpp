@@ -5,6 +5,15 @@
 #include "common.hpp"
 #include <iostream>
 
+template <typename T>
+static bool buffers_equal(const T *buff1, const T *buff2, size_t size)
+{
+    for (size_t i = 0; i < size; ++i)
+        if (buff1[i] != buff2[i])
+            return false;
+    return true;
+}
+
 void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datatype)
 {
     constexpr int count = 10;
@@ -57,14 +66,6 @@ bool submatrices_message_t::operator!=(const submatrices_message_t &rhs) const
     return !(rhs == *this);
 }
 
-bool submatrices_message_t::buffers_equal(const float *buff1, const float *buff2, size_t size) const
-{
-    for (size_t i = 0; i < size; ++i)
-        if (buff1[i] != buff2[i])
-            return false;
-    return true;
-}
-
 size_t submatrices_message_t::get_a_buffer_size() const
 {
     return (a_row_end - a_row_start) * (a_col_end - a_col_start);
@@ -112,4 +113,18 @@ size_t result_submatrix_message_t::get_result_rows_count() const
 size_t result_submatrix_message_t::get_result_cols_count() const
 {
     return result_col_end - result_col_start;
+}
+
+bool result_submatrix_message_t::operator==(const result_submatrix_message_t &rhs) const
+{
+    return result_row_start == rhs.result_row_start &&
+           result_row_end == rhs.result_row_end &&
+           result_col_start == rhs.result_col_start &&
+           result_col_end == rhs.result_col_end &&
+           buffers_equal(result_buffer, rhs.result_buffer, get_result_rows_count() * get_result_cols_count());
+}
+
+bool result_submatrix_message_t::operator!=(const result_submatrix_message_t &rhs) const
+{
+    return !(rhs == *this);
 }
