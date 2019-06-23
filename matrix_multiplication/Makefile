@@ -105,9 +105,10 @@ run_unit_tests:
 	@echo "Running $(UNIT_TEST_SRUN_CMD) unit_tests"
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(UNIT_TEST_SRUN_CMD) ./unit_tests"
 
-test:
+test: test.py
 	@echo "Running testing script..."
-	@$(SSH_CMD) "cd $(PROJECT_DIR); ./test.sh"
+	@scp -r -P 42222 test.py "s_bruchpa@parlab.ms.mff.cuni.cz:$(PROJECT_DIR)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); ./test.py"
 
 run:
 	@echo "Running $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
