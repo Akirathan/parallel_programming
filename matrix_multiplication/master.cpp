@@ -3,6 +3,7 @@
 //
 
 #include "master.hpp"
+#include <mpi.h>
 #include <cassert>
 #include <iostream>
 #include "common.hpp"
@@ -14,16 +15,16 @@ Master::Master(int workers_count, char **argv) :
         mMatrix2Reader{argv[2]},
         mMatricesSizes{0, 0, 0, 0},
         mWorkersCount{workers_count},
-        mActualWorker{1}
+        mActualWorker{1},
+        mResultFilename{argv[3]}
 {
-    std::string result_filename{argv[3]};
-
     mMatricesSizes = {
             mMatrix1Reader.getRowsCount(), // a_rows
             mMatrix1Reader.getColsCount(), // a_cols
             mMatrix2Reader.getRowsCount(), // b_rows
             mMatrix2Reader.getColsCount()  // b_cols
     };
+    assert(mMatricesSizes.a_cols == mMatricesSizes.b_rows);
 
     mResultMatrix.resize(mMatricesSizes.result_rows);
     for (auto &&row : mResultMatrix) {
@@ -50,7 +51,17 @@ Master::~Master()
 void Master::run()
 {
     sendMatricesSizesToAllWorkers();
-    sendBlocksToWorkers();
+    sendAllBlocksAndReceiveResults();
+
+    // Receive rest of results from some workers.
+    for (int worker_rank = 1; worker_rank < mActualWorker; worker_rank++)
+        receiveResultsFromWorker(worker_rank);
+
+    // Signal all workers that computation is done.
+    for (int worker_rank = 1; worker_rank <= mWorkersCount; worker_rank++)
+        sendContinueFlagToWorker(worker_rank, false);
+
+    writeResultMatrixToFile();
 }
 
 void Master::sendMatricesSizesToAllWorkers()
@@ -58,7 +69,7 @@ void Master::sendMatricesSizesToAllWorkers()
     if (DEBUG)
         std::cout << "Master: Sending sizes of matrices to all workers." << std::endl;
 
-    for (int worker_rank = 1; worker_rank < mWorkersCount + 1; worker_rank++) {
+    for (int worker_rank = 1; worker_rank <= mWorkersCount; worker_rank++) {
         sendToWorker(&mMatricesSizes.a_rows, 1, MPI_INT, worker_rank);
         sendToWorker(&mMatricesSizes.a_cols, 1, MPI_INT, worker_rank);
         sendToWorker(&mMatricesSizes.b_rows, 1, MPI_INT, worker_rank);
@@ -69,51 +80,26 @@ void Master::sendMatricesSizesToAllWorkers()
         std::cout << "Master: Sizes of all matrices sent to all workers." << std::endl;
 }
 
-void Master::sendBlocksToWorkers()
+/**
+ * Iterates over blocks of result matrix.
+ */
+void Master::sendAllBlocksAndReceiveResults()
 {
     size_t res_start_row = 0;
-    size_t res_end_row = std::min(ROWS_MAX_BLOCK_SIZE, mMatricesSizes.result_rows);
+    size_t res_end_row = std::min(ROWS_BLOCK_SIZE, mMatricesSizes.result_rows);
     while (res_start_row < mMatricesSizes.result_rows)
     {
         size_t res_start_col = 0;
-        size_t res_end_col = std::min(COLS_MAX_BLOCK_SIZE, mMatricesSizes.result_cols);
+        size_t res_end_col = std::min(COLS_BLOCK_SIZE, mMatricesSizes.result_cols);
         while (res_start_col < mMatricesSizes.result_cols)
         {
-            sendBlocksCorrespondingToResultBlock(res_start_row, res_end_row, res_start_col, res_end_col);
+            sendBlocksOfStripesAndReceiveResults(res_start_row, res_end_row, res_start_col, res_end_col);
             res_start_col = res_end_col;
-            res_end_col = std::min(res_end_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.result_cols);
+            res_end_col = std::min(res_end_col + COLS_BLOCK_SIZE, mMatricesSizes.result_cols);
         }
 
         res_start_row = res_end_row;
-        res_end_row = std::min(res_end_row + ROWS_MAX_BLOCK_SIZE, mMatricesSizes.result_rows);
-    }
-}
-
-void Master::receiveResultsFromWorkers()
-{
-    if (DEBUG)
-        std::cout << "Master: Start receiving results from all workers..." << std::endl;
-
-    for (int rank = 1; rank < mWorkersCount; rank++) {
-        result_submatrix_message_t message{};
-        receiveFromWorker(&message, 1, mResultMessageDatatype, rank);
-
-        FlatMatrix<float> received_matrix{message.result_buffer, message.get_result_rows_count(),
-                                          message.get_result_cols_count()};
-        if (DEBUG)
-            std::cout << "Master: From worker " << rank << " received result: " << received_matrix << std::endl;
-
-        for (int result_row = message.result_row_start, received_matrix_row = 0;
-             result_row < message.result_row_end;
-             result_row++, received_matrix_row++)
-        {
-            for (int result_col = message.result_col_start, received_matrix_col = 0;
-                 result_col < message.result_col_end;
-                 result_col++, received_matrix_col++)
-            {
-                mResultMatrix[result_row][result_col] += received_matrix.at(received_matrix_row, received_matrix_col);
-            }
-        }
+        res_end_row = std::min(res_end_row + ROWS_BLOCK_SIZE, mMatricesSizes.result_rows);
     }
 }
 
@@ -126,7 +112,7 @@ void Master::receiveResultsFromWorkers()
  * @param res_start_col
  * @param res_end_col
  */
-void Master::sendBlocksCorrespondingToResultBlock(size_t res_row_start, size_t res_row_end, size_t res_col_start,
+void Master::sendBlocksOfStripesAndReceiveResults(size_t res_row_start, size_t res_row_end, size_t res_col_start,
                                                   size_t res_col_end)
 {
     if (DEBUG)
@@ -134,56 +120,104 @@ void Master::sendBlocksCorrespondingToResultBlock(size_t res_row_start, size_t r
                   << ", res_row_end=" << res_row_end << ", res_col_start=" << res_col_start
                   << ", res_col_end=" << res_col_end << std::endl;
 
-    size_t a_block_height = res_row_end - res_row_start;
     const int a_row_start = res_row_start;
     const int a_row_end = res_row_end;
-    size_t b_block_width = res_col_end - res_col_start;
     const int b_col_start = res_col_start;
     const int b_col_end = res_col_end;
-    assert(a_block_height <= ROWS_MAX_BLOCK_SIZE);
-    assert(b_block_width <= COLS_MAX_BLOCK_SIZE);
 
-    assert(mMatricesSizes.a_cols == mMatricesSizes.b_rows);
     for (size_t a_col = 0, b_row = 0; a_col < mMatricesSizes.a_cols && b_row < mMatricesSizes.b_rows;
-         a_col = std::min(a_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.a_cols),
-         b_row = std::min(b_row + ROWS_MAX_BLOCK_SIZE, mMatricesSizes.b_rows))
+         a_col = std::min(a_col + COLS_BLOCK_SIZE, mMatricesSizes.a_cols),
+         b_row = std::min(b_row + ROWS_BLOCK_SIZE, mMatricesSizes.b_rows))
     {
         int a_col_start = a_col;
-        int a_col_end = std::min(a_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.a_cols);
-        int a_block_width = a_col_end - a_col_start;
-        assert(a_block_width <= static_cast<int>(COLS_MAX_BLOCK_SIZE));
-
+        int a_col_end = std::min(a_col + COLS_BLOCK_SIZE, mMatricesSizes.a_cols);
         int b_row_start = b_row;
-        int b_row_end = std::min(b_row + ROWS_MAX_BLOCK_SIZE, mMatricesSizes.b_rows);
-        int b_block_height = b_row_end - b_row_start;
-        assert(b_block_height <= static_cast<int>(ROWS_MAX_BLOCK_SIZE));
+        int b_row_end = std::min(b_row + ROWS_BLOCK_SIZE, mMatricesSizes.b_rows);
 
-        FlatMatrix<float> rectangle_a =
-                mMatrix1Reader.loadRectangle(a_row_start, a_col_start, a_block_width, a_block_height);
-        FlatMatrix<float> rectangle_b =
-                mMatrix2Reader.loadRectangle(b_row_start, b_col_start, b_block_width, b_block_height);
+        sendContinueFlagToWorker(mActualWorker, true);
+        sendSubmatrixToWorker(mActualWorker, a_row_start, a_row_end, a_col_start, a_col_end,
+                              b_row_start, b_row_end, b_col_start, b_col_end);
 
-        // Compose message to worker.
-        submatrices_message_t message;
-        message.a_row_start = a_row_start;
-        message.a_row_end = a_row_end;
-        message.a_col_start = a_col_start;
-        message.a_col_end = a_col_end;
-        message.b_row_start = b_row_start;
-        message.b_row_end = b_row_end;
-        message.b_col_start = b_col_start;
-        message.b_col_end = b_col_end;
-        std::copy(rectangle_a.getBuffer(), rectangle_a.getBuffer() + rectangle_a.getTotalSize(), message.a_buffer);
-        std::copy(rectangle_b.getBuffer(), rectangle_b.getBuffer() + rectangle_b.getTotalSize(), message.b_buffer);
-        if (DEBUG)
-            std::cout << "Master::sendBlocksCorrespondingToResultBlock: Sending submatrices message "
-                      << message << " to worker " << mActualWorker << std::endl;
-
-        // Send to next available worker.
-        sendToWorker(&message, 1, mSubmatricesMessageDatatype, mActualWorker);
         if (mActualWorker >= mWorkersCount) {
-            receiveResultsFromWorkers();
+            receiveResultsFromAllWorkers();
             mActualWorker = 1;
+        }
+    }
+}
+
+void Master::sendContinueFlagToWorker(int worker_rank, bool cont) const
+{
+    if (DEBUG)
+        std::cout << "Master: Sending continue flag (" << cont << ") to worker " << worker_rank << std::endl;
+
+    sendToWorker(&cont, 1, MPI_CHAR, worker_rank);
+}
+
+void Master::sendSubmatrixToWorker(int worker_rank, int a_row_start, int a_row_end, int a_col_start, int a_col_end,
+                                   int b_row_start, int b_row_end, int b_col_start, int b_col_end)
+{
+    const size_t a_block_height = a_row_end - a_row_start;
+    const size_t a_block_width = a_col_end - a_col_start;
+    assert(a_block_height <= ROWS_BLOCK_SIZE);
+    assert(a_block_width <= COLS_BLOCK_SIZE);
+
+    const size_t b_block_height = b_row_end - b_row_start;
+    const size_t b_block_width = b_col_end - b_col_start;
+    assert(b_block_height <= ROWS_BLOCK_SIZE);
+    assert(b_block_width <= COLS_BLOCK_SIZE);
+
+    FlatMatrix<float> rectangle_a =
+            mMatrix1Reader.loadRectangle(a_row_start, a_col_start, a_block_width, a_block_height);
+    FlatMatrix<float> rectangle_b =
+            mMatrix2Reader.loadRectangle(b_row_start, b_col_start, b_block_width, b_block_height);
+
+    // Compose message to worker.
+    submatrices_message_t message;
+    message.a_row_start = a_row_start;
+    message.a_row_end = a_row_end;
+    message.a_col_start = a_col_start;
+    message.a_col_end = a_col_end;
+    message.b_row_start = b_row_start;
+    message.b_row_end = b_row_end;
+    message.b_col_start = b_col_start;
+    message.b_col_end = b_col_end;
+    std::copy(rectangle_a.getBuffer(), rectangle_a.getBuffer() + rectangle_a.getTotalSize(), message.a_buffer);
+    std::copy(rectangle_b.getBuffer(), rectangle_b.getBuffer() + rectangle_b.getTotalSize(), message.b_buffer);
+
+    if (DEBUG)
+        std::cout << "Master: Sending submatrices: " << message << " to worker: " << worker_rank << std::endl;
+
+    sendToWorker(&message, 1, mSubmatricesMessageDatatype, mActualWorker);
+}
+
+void Master::receiveResultsFromAllWorkers()
+{
+    if (DEBUG)
+        std::cout << "Master: Start receiving results from all workers..." << std::endl;
+
+    for (int rank = 1; rank <= mWorkersCount; rank++)
+        receiveResultsFromWorker(rank);
+}
+
+void Master::receiveResultsFromWorker(int rank)
+{
+    result_submatrix_message_t message{};
+    receiveFromWorker(&message, 1, mResultMessageDatatype, rank);
+
+    FlatMatrix<float> received_matrix{message.result_buffer, message.get_result_rows_count(),
+                                      message.get_result_cols_count()};
+    if (DEBUG)
+        std::cout << "Master: From worker " << rank << " received result: " << received_matrix << std::endl;
+
+    for (int result_row = message.result_row_start, received_matrix_row = 0;
+         result_row < message.result_row_end;
+         result_row++, received_matrix_row++)
+    {
+        for (int result_col = message.result_col_start, received_matrix_col = 0;
+             result_col < message.result_col_end;
+             result_col++, received_matrix_col++)
+        {
+            mResultMatrix[result_row][result_col] += received_matrix.at(received_matrix_row, received_matrix_col);
         }
     }
 }
@@ -202,5 +236,17 @@ void Master::receiveFromWorker(void *buf, int count, MPI_Datatype datatype, int 
     CHECK(MPI_Get_elements(&status, datatype, &element_count));
     if (DEBUG)
         std::cout << "Master::receiveFromWorker: MPI_Get_elements = " << element_count << std::endl;
+}
+
+void Master::writeResultMatrixToFile() const
+{
+    std::ofstream output{mResultFilename, std::ios::binary};
+
+    output.write((char *)&mMatricesSizes.result_cols, 4);
+    output.write((char *)&mMatricesSizes.result_rows, 4);
+
+    for (auto &&row : mResultMatrix) {
+        output.write((char *)&row[0], row.size());
+    }
 }
 
