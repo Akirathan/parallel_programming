@@ -27,6 +27,8 @@ Master::Master(int workers_count, char **argv) :
 
     mBlockSizes = determineBlockSizes(mMatricesSizes.a_cols);
 
+    create_submatrices_message_datatype(&mSubmatricesMessageDatatype);
+
     if (DEBUG)
         std::cout << "Master: A.rows=" << mMatricesSizes.a_rows
                   << ", A.cols=" << mMatricesSizes.a_cols
@@ -35,9 +37,16 @@ Master::Master(int workers_count, char **argv) :
                   << std::endl;
 }
 
+Master::~Master()
+{
+    CHECK(MPI_Type_free(&mSubmatricesMessageDatatype));
+}
+
+
 void Master::run()
 {
     sendMatricesSizesToAllWorkers();
+    sendBlocksToWorkers();
 }
 
 void Master::sendMatricesSizesToAllWorkers()
@@ -63,7 +72,7 @@ void Master::sendBlocksToWorkers()
         size_t res_end_col = std::min(COLS_MAX_BLOCK_SIZE, mMatricesSizes.result_cols);
         while (res_start_col < mMatricesSizes.result_cols)
         {
-            sendStripesCorrespondingToResultBlock(res_start_row, res_end_row, res_start_col, res_end_col);
+            sendBlocksCorrespondingToResultBlock(res_start_row, res_end_row, res_start_col, res_end_col);
             res_start_col = res_end_col;
             res_end_col = std::min(res_end_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.result_cols);
         }
@@ -73,45 +82,85 @@ void Master::sendBlocksToWorkers()
     }
 }
 
+void Master::receiveResultsFromWorkers()
+{
+    if (DEBUG)
+        std::cout << "Master: Start receiving results from all workers..." << std::endl;
+
+    for (int rank = 1; rank < mWorkersCount; rank++) {
+
+    }
+}
+
 /**
- * Parameters represent submatrix in result matrix. We need to determine sizes of row stripe from matrix A
- * and column stripe from matrix B, send these stripes to some worker which will multiple these stripes and
- * as a result of this multiplication we get the submatrix represented by parameters.
- * @param res_start_row
- * @param res_end_row
+ * Parameters represent submatrix in result matrix.
+ * This method sends parts of stripes from matrix A and B to workers. When there is no worker left to send submatrices
+ * to, then we receive result blocks from all the workers.
+ * @param res_row_start
+ * @param res_row_end
  * @param res_start_col
  * @param res_end_col
  */
-void Master::sendStripesCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
-                                                   size_t res_end_col)
+void Master::sendBlocksCorrespondingToResultBlock(size_t res_row_start, size_t res_row_end, size_t res_col_start,
+                                                  size_t res_col_end)
 {
-    size_t a_start_row = res_start_row;
-    size_t a_end_row = res_end_row;
-    size_t a_start_col = 0;
-
-    size_t b_start_row = 0;
-    size_t b_start_col = res_start_col;
-    size_t b_end_col = res_end_col;
-
-    size_t block_len = mMatricesSizes.a_cols;
-
-    FlatMatrix<float> a_stripe = mMatrix1Reader.loadRectangle(a_start_row, a_start_col, block_len,
-                                                              a_end_row - a_start_row);
-    FlatMatrix<float> b_stripe = mMatrix2Reader.loadRectangle(b_start_row, b_start_col, b_end_col - b_start_col,
-                                                              block_len);
-
     if (DEBUG)
-        std::cout << "Master: Sending A stripe(start_row=" << a_start_row << ", end_row=" << a_end_row
-                  << "), B stripe(start_col=" << b_start_col << ", end_col=" << b_start_col << ")"
-                  << " to worker with rank " << mActualWorker
-                  << std::endl;
-    // TODO: Poslat velikosti a_stripe a b_stripe
-    sendToWorker(a_stripe.getBuffer(), a_stripe.getTotalSize(), MPI_FLOAT, mActualWorker);
-    sendToWorker(b_stripe.getBuffer(), b_stripe.getTotalSize(), MPI_FLOAT, mActualWorker);
+        std::cout << "Master: Start sending blocks corresponding to result block with: res_row_start=" << res_row_start
+                  << ", res_row_end=" << res_row_end << ", res_col_start=" << res_col_start
+                  << ", res_col_end=" << res_col_end << std::endl;
 
-    mActualWorker++;
-    if (mActualWorker >= mWorkersCount)
-        mActualWorker = 1;
+    size_t a_block_height = res_row_end - res_row_start;
+    const int a_row_start = res_row_start;
+    const int a_row_end = res_row_end;
+    size_t b_block_width = res_col_end - res_col_start;
+    const int b_col_start = res_col_start;
+    const int b_col_end = res_col_end;
+    assert(a_block_height <= ROWS_MAX_BLOCK_SIZE);
+    assert(b_block_width <= COLS_MAX_BLOCK_SIZE);
+
+    assert(mMatricesSizes.a_cols == mMatricesSizes.b_rows);
+    for (size_t a_col = 0, b_row = 0; a_col < mMatricesSizes.a_cols && b_row < mMatricesSizes.b_rows;
+         a_col = std::min(a_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.a_cols),
+         b_row = std::min(b_row + ROWS_MAX_BLOCK_SIZE, mMatricesSizes.b_rows))
+    {
+        int a_col_start = a_col;
+        int a_col_end = std::min(a_col + COLS_MAX_BLOCK_SIZE, mMatricesSizes.a_cols);
+        int a_block_width = a_col_end - a_col_start;
+        assert(a_block_width <= static_cast<int>(COLS_MAX_BLOCK_SIZE));
+
+        int b_row_start = b_row;
+        int b_row_end = std::min(b_row + ROWS_MAX_BLOCK_SIZE, mMatricesSizes.b_rows);
+        int b_block_height = b_row_end - b_row_start;
+        assert(b_block_height <= static_cast<int>(ROWS_MAX_BLOCK_SIZE));
+
+        FlatMatrix<float> rectangle_a =
+                mMatrix1Reader.loadRectangle(a_row_start, a_col_start, a_block_width, a_block_height);
+        FlatMatrix<float> rectangle_b =
+                mMatrix2Reader.loadRectangle(b_row_start, b_col_start, b_block_width, b_block_height);
+
+        // Compose message to worker.
+        submatrices_message_t message;
+        message.a_row_start = a_row_start;
+        message.a_row_end = a_row_end;
+        message.a_col_start = a_col_start;
+        message.a_col_end = a_col_end;
+        message.b_row_start = b_row_start;
+        message.b_row_end = b_row_end;
+        message.b_col_start = b_col_start;
+        message.b_col_end = b_col_end;
+        std::copy(rectangle_a.getBuffer(), rectangle_a.getBuffer() + rectangle_a.getTotalSize(), message.a_buffer);
+        std::copy(rectangle_b.getBuffer(), rectangle_b.getBuffer() + rectangle_b.getTotalSize(), message.b_buffer);
+        if (DEBUG)
+            std::cout << "Master::sendBlocksCorrespondingToResultBlock: Sending submatrices message "
+                      << message << " to worker " << mActualWorker << std::endl;
+
+        // Send to next available worker.
+        sendToWorker(&message, 1, mSubmatricesMessageDatatype, mActualWorker);
+        if (mActualWorker >= mWorkersCount) {
+            receiveResultsFromWorkers();
+            mActualWorker = 1;
+        }
+    }
 }
 
 block_sizes_t Master::determineBlockSizes(size_t a_cols) const
@@ -126,5 +175,16 @@ block_sizes_t Master::determineBlockSizes(size_t a_cols) const
 void Master::sendToWorker(const void *buf, int count, MPI_Datatype datatype, int destination_rank) const
 {
     CHECK(MPI_Send(buf, count, datatype, destination_rank, static_cast<int>(Tag::from_master), MPI_COMM_WORLD));
+}
+
+void Master::receiveFromWorker(void *buf, int count, MPI_Datatype datatype, int rank) const
+{
+    MPI_Status status{};
+    CHECK(MPI_Recv(buf, count, datatype, rank, static_cast<int>(Tag::from_worker), MPI_COMM_WORLD, &status));
+
+    int element_count = 0;
+    CHECK(MPI_Get_elements(&status, datatype, &element_count));
+    if (DEBUG)
+        std::cout << "Master::receiveFromWorker: MPI_Get_elements = " << element_count << std::endl;
 }
 

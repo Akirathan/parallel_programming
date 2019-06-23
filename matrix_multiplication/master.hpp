@@ -6,11 +6,13 @@
 #define MATRIX_MULT_MASTER_HPP
 
 #include "common.hpp"
+#include <mpi.h>
 #include "MatrixReader.hpp"
 
 class Master {
 public:
     Master(int workers_count, char **argv);
+    ~Master();
     void run();
 
 private:
@@ -20,14 +22,18 @@ private:
     block_sizes_t mBlockSizes;
     int mWorkersCount;
     int mActualWorker;
+    MPI_Datatype mSubmatricesMessageDatatype;
 
     void sendMatricesSizesToAllWorkers();
     void sendBlocksToWorkers();
+    void receiveResultsFromWorkers();
     block_sizes_t determineBlockSizes(size_t a_cols) const;
-    void sendToWorker(const void *buf, int count, MPI_Datatype datatype, int destination_rank) const;
 
-    void sendStripesCorrespondingToResultBlock(size_t res_start_row, size_t res_end_row, size_t res_start_col,
-                                               size_t res_end_col);
+    void sendBlocksCorrespondingToResultBlock(size_t res_row_start, size_t res_row_end, size_t res_start_col,
+                                              size_t res_end_col);
+
+    void sendToWorker(const void *buf, int count, MPI_Datatype datatype, int destination_rank) const;
+    void receiveFromWorker(void *buf, int count, MPI_Datatype datatype, int rank) const;
 };
 
 #endif //MATRIX_MULT_MASTER_HPP
