@@ -254,8 +254,7 @@ void Master::writeResultMatrixToFile() const
     output.write((char *)&mMatricesSizes.result_cols, 4);
     output.write((char *)&mMatricesSizes.result_rows, 4);
 
-    for (auto &&row : mResultMatrix) {
-        output.write((char *)&row[0], row.size());
-    }
+    for (auto &&row : mResultMatrix)
+        output.write((char *)&row[0], row.size() * sizeof(float));
 }
 
