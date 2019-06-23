@@ -87,3 +87,13 @@ std::ostream &operator<<(std::ostream &os, const submatrices_message_t &message)
        << message.b_col_end << " a_buffer: " << message.a_buffer << " b_buffer: " << message.b_buffer;
     return os;
 }
+
+size_t result_submatrix_message_t::get_result_rows_count() const
+{
+    return result_row_end - result_row_start;
+}
+
+size_t result_submatrix_message_t::get_result_cols_count() const
+{
+    return result_col_end - result_col_start;
+}

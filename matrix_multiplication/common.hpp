@@ -88,6 +88,9 @@ struct result_submatrix_message_t {
     int result_col_start;
     int result_col_end;
     float result_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
+
+    size_t get_result_rows_count() const;
+    size_t get_result_cols_count() const;
 };
 
 

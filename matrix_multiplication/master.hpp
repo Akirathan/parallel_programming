@@ -7,6 +7,7 @@
 
 #include "common.hpp"
 #include <mpi.h>
+#include <vector>
 #include "MatrixReader.hpp"
 
 class Master {
@@ -22,7 +23,9 @@ private:
     block_sizes_t mBlockSizes;
     int mWorkersCount;
     int mActualWorker;
+    std::vector<std::vector<float>> mResultMatrix;
     MPI_Datatype mSubmatricesMessageDatatype;
+    MPI_Datatype mResultMessageDatatype;
 
     void sendMatricesSizesToAllWorkers();
     void sendBlocksToWorkers();

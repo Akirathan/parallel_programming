@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <vector>
+#include <ostream>
 
 /**
  * Row-based flat matrix. Just a wrapper around buffer with flat-indexing.
@@ -65,6 +66,13 @@ public:
     const T & at(size_t row, size_t col) const
     {
         return mBuff[getFlatIndex(row, col)];
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const FlatMatrix &matrix)
+    {
+        os << "mColsCount: " << matrix.mColsCount << " mRowsCount: " << matrix.mRowsCount << " mTotalSize: "
+           << matrix.mTotalSize << " mBuff: " << matrix.mBuff << " mAllocated: " << matrix.mAllocated;
+        return os;
     }
 
 private:

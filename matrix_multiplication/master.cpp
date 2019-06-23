@@ -25,9 +25,15 @@ Master::Master(int workers_count, char **argv) :
             mMatrix2Reader.getColsCount()  // b_cols
     };
 
+    mResultMatrix.resize(mMatricesSizes.result_rows);
+    for (auto &&row : mResultMatrix) {
+        row.resize(mMatricesSizes.result_cols);
+    }
+
     mBlockSizes = determineBlockSizes(mMatricesSizes.a_cols);
 
     create_submatrices_message_datatype(&mSubmatricesMessageDatatype);
+    // TODO: initialize mResultMessageDatatype.
 
     if (DEBUG)
         std::cout << "Master: A.rows=" << mMatricesSizes.a_rows
@@ -91,7 +97,25 @@ void Master::receiveResultsFromWorkers()
         std::cout << "Master: Start receiving results from all workers..." << std::endl;
 
     for (int rank = 1; rank < mWorkersCount; rank++) {
+        result_submatrix_message_t message{};
+        receiveFromWorker(&message, 1, mResultMessageDatatype, rank);
 
+        FlatMatrix<float> received_matrix{message.result_buffer, message.get_result_rows_count(),
+                                          message.get_result_cols_count()};
+        if (DEBUG)
+            std::cout << "Master: From worker " << rank << " received result: " << received_matrix << std::endl;
+
+        for (int result_row = message.result_row_start, received_matrix_row = 0;
+             result_row < message.result_row_end;
+             result_row++, received_matrix_row++)
+        {
+            for (int result_col = message.result_col_start, received_matrix_col = 0;
+                 result_col < message.result_col_end;
+                 result_col++, received_matrix_col++)
+            {
+                mResultMatrix[result_row][result_col] += received_matrix.at(received_matrix_row, received_matrix_col);
+            }
+        }
     }
 }
 
