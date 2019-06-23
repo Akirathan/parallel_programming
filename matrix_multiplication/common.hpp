@@ -111,5 +111,6 @@ inline int get_rank()
 }
 
 void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datatype);
+void create_result_message_datatype(MPI_Datatype *result_message_datatype);
 
 #endif //MATRIX_MULT_COMMON_HPP

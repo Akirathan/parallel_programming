@@ -22,6 +22,22 @@ void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datat
         std::cout << "Size of submatrices_message type = " << type_size << std::endl;
 }
 
+void create_result_message_datatype(MPI_Datatype *result_message_datatype)
+{
+    constexpr int count = 5;
+    int block_lengths[count] = {1, 1, 1, 1, ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE};
+    MPI_Aint displacements[count] = {0, 4, 8, 12, 16};
+    MPI_Datatype types[count] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_FLOAT};
+
+    CHECK(MPI_Type_create_struct(count, block_lengths, displacements, types, result_message_datatype));
+    CHECK(MPI_Type_commit(result_message_datatype));
+
+    int type_size = 0;
+    CHECK(MPI_Type_size(*result_message_datatype, &type_size));
+    if (DEBUG)
+        std::cout << "Size of result_message type = " << type_size << std::endl;
+}
+
 bool submatrices_message_t::operator==(const submatrices_message_t &rhs) const
 {
     return a_row_start == rhs.a_row_start &&

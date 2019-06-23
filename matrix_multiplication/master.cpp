@@ -33,7 +33,7 @@ Master::Master(int workers_count, char **argv) :
     mBlockSizes = determineBlockSizes(mMatricesSizes.a_cols);
 
     create_submatrices_message_datatype(&mSubmatricesMessageDatatype);
-    // TODO: initialize mResultMessageDatatype.
+    create_result_message_datatype(&mResultMessageDatatype);
 
     if (DEBUG)
         std::cout << "Master: A.rows=" << mMatricesSizes.a_rows
@@ -46,8 +46,8 @@ Master::Master(int workers_count, char **argv) :
 Master::~Master()
 {
     CHECK(MPI_Type_free(&mSubmatricesMessageDatatype));
+    CHECK(MPI_Type_free(&mResultMessageDatatype));
 }
-
 
 void Master::run()
 {
