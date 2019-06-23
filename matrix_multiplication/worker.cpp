@@ -4,10 +4,10 @@
 
 #include "worker.hpp"
 #include "common.hpp"
+#include "FlatMatrix.hpp"
 #include <iostream>
 
 static int receive_from_master(void *buf, int max_count, MPI_Datatype datatype);
-static stripes_t receive_stripes_from_master(const block_sizes_t &block_sizes);
 static matrices_sizes_t receive_matrices_sizes_from_master();
 
 void worker_task(int rank)
@@ -29,15 +29,6 @@ static int receive_from_master(void *buf, int max_count, MPI_Datatype datatype)
     int received_count = 0;
     CHECK(MPI_Get_count(&status, datatype, &received_count));
     return received_count;
-}
-
-static stripes_t receive_stripes_from_master(const block_sizes_t &block_sizes)
-{
-    // First, row stripe from first matrix is received.
-    size_t recv_row_stripe_size = block_sizes.rows_block_size * block_sizes.length;
-
-    // Second, column strip from second matrix is received.
-    size_t recv_col_stripe_size = block_sizes.cols_block_size * block_sizes.length;
 }
 
 static matrices_sizes_t receive_matrices_sizes_from_master()

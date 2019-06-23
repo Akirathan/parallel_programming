@@ -20,20 +20,6 @@ enum class Tag {
     from_worker = 2
 };
 
-struct stripes_t {
-    std::vector<std::vector<float>> row_stripe;
-    std::vector<std::vector<float>> column_stripe;
-};
-
-struct block_sizes_t {
-    /// Size of rows block from first matrix.
-    size_t rows_block_size = 0;
-    /// Size of columns block from second matrix.
-    size_t cols_block_size = 0;
-    /// Length of the block.
-    size_t length = 0;
-};
-
 struct matrices_sizes_t {
     size_t a_rows;
     size_t a_cols;

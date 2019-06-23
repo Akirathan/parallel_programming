@@ -30,8 +30,6 @@ Master::Master(int workers_count, char **argv) :
         row.resize(mMatricesSizes.result_cols);
     }
 
-    mBlockSizes = determineBlockSizes(mMatricesSizes.a_cols);
-
     create_submatrices_message_datatype(&mSubmatricesMessageDatatype);
     create_result_message_datatype(&mResultMessageDatatype);
 
@@ -188,15 +186,6 @@ void Master::sendBlocksCorrespondingToResultBlock(size_t res_row_start, size_t r
             mActualWorker = 1;
         }
     }
-}
-
-block_sizes_t Master::determineBlockSizes(size_t a_cols) const
-{
-    return block_sizes_t {
-            ROWS_MAX_BLOCK_SIZE, // rows_block_size
-            COLS_MAX_BLOCK_SIZE, // cols_block_size
-            a_cols// length
-    };
 }
 
 void Master::sendToWorker(const void *buf, int count, MPI_Datatype datatype, int destination_rank) const

@@ -20,7 +20,6 @@ private:
     MatrixReader mMatrix1Reader;
     MatrixReader mMatrix2Reader;
     matrices_sizes_t mMatricesSizes;
-    block_sizes_t mBlockSizes;
     int mWorkersCount;
     int mActualWorker;
     std::vector<std::vector<float>> mResultMatrix;
@@ -30,7 +29,6 @@ private:
     void sendMatricesSizesToAllWorkers();
     void sendBlocksToWorkers();
     void receiveResultsFromWorkers();
-    block_sizes_t determineBlockSizes(size_t a_cols) const;
 
     void sendBlocksCorrespondingToResultBlock(size_t res_row_start, size_t res_row_end, size_t res_start_col,
                                               size_t res_end_col);
