@@ -68,7 +68,8 @@ int main(int argc, char **argv)
         master.run();
     }
     else {
-        worker_task(rank);
+        Worker worker{rank};
+        worker.run();
     }
 
     CHECK(MPI_Finalize());
