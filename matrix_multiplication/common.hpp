@@ -12,8 +12,8 @@
 
 constexpr int MASTER_RANK = 0;
 constexpr bool DEBUG = true;
-constexpr size_t ROWS_MAX_BLOCK_SIZE = 32;
-constexpr size_t COLS_MAX_BLOCK_SIZE = 32;
+constexpr size_t ROWS_BLOCK_SIZE = 32;
+constexpr size_t COLS_BLOCK_SIZE = 32;
 
 enum class Tag {
     from_master = 1,
@@ -51,8 +51,8 @@ struct submatrices_message_t {
     int b_row_end;
     int b_col_start; // 7
     int b_col_end; // 8
-    float a_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
-    float b_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
+    float a_buffer[ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE];
+    float b_buffer[ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE];
 
     size_t get_a_buffer_size() const;
     size_t get_b_buffer_size() const;
@@ -70,7 +70,7 @@ struct result_submatrix_message_t {
     int result_row_end;
     int result_col_start;
     int result_col_end;
-    float result_buffer[ROWS_MAX_BLOCK_SIZE * COLS_MAX_BLOCK_SIZE];
+    float result_buffer[ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE];
 
     size_t get_result_rows_count() const;
     size_t get_result_cols_count() const;
