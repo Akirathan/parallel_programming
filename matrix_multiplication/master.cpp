@@ -244,11 +244,14 @@ void Master::writeResultMatrixToFile() const
     std::ofstream output{mResultFilename, std::ios::binary};
 
     if (is_debug_level(DebugLevel::Info)) {
-        std::cout << "Master: Writing matrix to filename" << mResultFilename << ", matrix:\n\t";
-        for (auto &&row : mResultMatrix) {
-            for (auto &&item : row)
-                std::cout << item << ", ";
-            std::cout << "\n\t";
+        std::cout << "Master: Writing matrix to filename " << mResultFilename;
+        if (is_debug_level(DebugLevel::Debug)) {
+            std::cout << ", mastrix:\n\t";
+            for (auto &&row : mResultMatrix) {
+                for (auto &&item : row)
+                    std::cout << item << ", ";
+                std::cout << "\n\t";
+            }
         }
     }
 
