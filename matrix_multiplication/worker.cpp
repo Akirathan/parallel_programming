@@ -75,27 +75,34 @@ submatrices_message_t Worker::receiveSubmatrices()
 
 result_submatrix_message_t Worker::multiplySubmatrices(submatrices_message_t &submatrices)
 {
-    int result_row_start = submatrices.a_row_start;
-    int result_row_end = submatrices.a_row_end;
-    int result_col_start = submatrices.b_col_start;
-    int result_col_end = submatrices.b_col_end;
+    const size_t result_row_start = submatrices.a_row_start;
+    const size_t result_row_end = submatrices.a_row_end;
+    const size_t result_col_start = submatrices.b_col_start;
+    const size_t result_col_end = submatrices.b_col_end;
 
-    int result_cols = result_col_end - result_col_start;
-    int result_rows = result_row_end - result_row_start;
+    const size_t result_cols = result_col_end - result_col_start;
+    const size_t result_rows = result_row_end - result_row_start;
 
-    FlatMatrix<float> a_matrix{submatrices.a_buffer, submatrices.get_a_rows_count(), submatrices.get_a_cols_count()};
-    FlatMatrix<float> b_matrix{submatrices.b_buffer, submatrices.get_b_rows_count(), submatrices.get_b_cols_count()};
+    const size_t a_rows = submatrices.get_a_rows_count();
+    const size_t a_cols = submatrices.get_a_cols_count();
+    const size_t b_rows = submatrices.get_b_rows_count();
+    const size_t b_cols = submatrices.get_b_cols_count();
+
+    assert(submatrices.get_a_cols_count() == submatrices.get_b_rows_count());
+
+    FlatMatrix<float> a_matrix{submatrices.a_buffer, a_rows, a_cols};
+    FlatMatrix<float> b_matrix{submatrices.b_buffer, b_rows, b_cols};
     mResultBuffer.resize(result_rows * result_cols);
-    FlatMatrix<float> res_matrix{&mResultBuffer[0], static_cast<size_t>(result_rows), static_cast<size_t>(result_cols)};
+    FlatMatrix<float> res_matrix{&mResultBuffer[0], result_rows, result_cols};
 
-    for (int result_row = result_row_start; result_row < result_row_end; result_row++) {
-        for (int result_col = result_col_start; result_col < result_col_end; result_col++) {
+    for (size_t result_row = 0; result_row < result_rows; result_row++) {
+        for (size_t result_col = 0; result_col < result_cols; result_col++) {
             float sum = 0;
-            int a_row = result_row;
-            int b_col = result_col;
+            size_t a_row = result_row;
+            size_t b_col = result_col;
             // Iterate over one row in A and one column in B.
-            for (int a_col = 0, b_row = 0;
-                 a_col < submatrices.a_col_end && b_row < submatrices.b_row_end;
+            for (size_t a_col = 0, b_row = 0;
+                 a_col < a_cols && b_row < b_rows;
                  a_col++, b_row++)
             {
                 float a_elem = a_matrix.at(a_row, a_col);
