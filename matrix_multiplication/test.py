@@ -13,12 +13,32 @@ PARALLEL_EXE = './matrix_mult'
 
 SERIAL_SRUN = ['srun', '-p', 'small-lp']
 PARTITION = 'small-hp'
-N_PROCS = 2
+N_PROCS = 3
 N_HOSTS = 1
 CORES = 2
 TIMEOUT = '20:00'
 PARALLEL_SRUN = ['srun', '-p', PARTITION, '-n', str(N_PROCS), '-N', str(N_HOSTS), '-c', str(CORES),
                  '--distribution', 'cyclic', '--time='+TIMEOUT]
+
+
+class TestInput:
+    def __init__(self, a_rows_count, a_cols_count, b_rows_count, b_cols_count, seed):
+        assert(a_cols_count == b_rows_count)
+        self.a_rows_count = a_rows_count
+        self.a_cols_count = a_cols_count
+        self.b_rows_count = b_rows_count
+        self.b_cols_count = b_cols_count
+        self.seed = seed
+
+    def __str__(self):
+        return 'a_rows_count=%d, a_cols_count=%d, b_rows_count=%d, b_cols_count=%d, seed=%d' \
+               % (self.a_rows_count, self.a_cols_count, self.b_rows_count, self.b_cols_count, self.seed)
+
+
+INPUTS = [
+    TestInput(5, 5, 5, 5, 42),
+    #TestInput(50, 50, 50, 50, 42),
+]
 
 
 def check_files_and_dirs():
@@ -86,24 +106,6 @@ def test(matrix_a_fname, matrix_b_fname):
     print('===========================================')
     return serial_time_ms / parallel_time_ms
 
-
-class TestInput:
-    def __init__(self, a_rows_count, a_cols_count, b_rows_count, b_cols_count, seed):
-        assert(a_cols_count == b_rows_count)
-        self.a_rows_count = a_rows_count
-        self.a_cols_count = a_cols_count
-        self.b_rows_count = b_rows_count
-        self.b_cols_count = b_cols_count
-        self.seed = seed
-
-    def __str__(self):
-        return 'a_rows_count=%d, a_cols_count=%d, b_rows_count=%d, b_cols_count=%d, seed=%d' \
-               % (self.a_rows_count, self.a_cols_count, self.b_rows_count, self.b_cols_count, self.seed)
-
-
-INPUTS = [
-    TestInput(5, 5, 5, 5, 42)
-]
 
 if __name__ == '__main__':
     check_files_and_dirs()
