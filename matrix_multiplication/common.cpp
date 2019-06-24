@@ -17,9 +17,14 @@ static bool buffers_equal(const T *buff1, const T *buff2, size_t size)
 void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datatype)
 {
     constexpr int count = 10;
-    int block_lengths[count] = {1, 1, 1, 1, 1, 1, 1, 1, ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE,
-                                ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE};
-    MPI_Aint displacements[count] = {0, 4, 8, 12, 16, 20, 24, 28, 32, 32 + ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE};
+    int block_lengths[count] = {1, 1, 1, 1, 1, 1, 1, 1,
+                                ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE, // a_buffer
+                                ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE // b_buffer
+    };
+    MPI_Aint displacements[count] = {0, 4, 8, 12, 16, 20, 24, 28,
+                                     32, // a_buffer
+                                     32 + (ROWS_BLOCK_SIZE * COLS_BLOCK_SIZE * sizeof(float)) // b_buffer
+    };
     MPI_Datatype types[count] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
                                  MPI_INT, MPI_INT, MPI_INT, MPI_FLOAT, MPI_FLOAT};
     CHECK(MPI_Type_create_struct(count, block_lengths, displacements, types, submatrices_message_datatype));
