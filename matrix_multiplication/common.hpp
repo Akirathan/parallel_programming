@@ -12,25 +12,28 @@
 
 enum class DebugLevel {
     Debug,
-    Info
+    Info,
+    None
 };
 
 
-constexpr DebugLevel DEBUG = DebugLevel::Debug;
+constexpr DebugLevel DEBUG = DebugLevel::Info;
 constexpr int MASTER_RANK = 0;
 constexpr size_t ROWS_BLOCK_SIZE = 32;
 constexpr size_t COLS_BLOCK_SIZE = 32;
 
 inline bool is_debug_level(DebugLevel debug_level)
 {
-    if (DEBUG == DebugLevel::Info) {
+    if (DEBUG == DebugLevel::None)
+        return false;
+    else if (DEBUG == DebugLevel::Debug)
+        return true;
+    else if (DEBUG == DebugLevel::Info) {
         if (debug_level == DebugLevel::Info)
             return true;
         else
             return false;
     }
-    else if (DEBUG == DebugLevel::Debug)
-        return true;
 }
 
 enum class Tag {
