@@ -155,9 +155,25 @@ static void test_create_submatrices_message_datatype()
 
     MPI_Datatype submatrices_message_dt{};
     create_submatrices_message_datatype(&submatrices_message_dt);
-    submatrices_message_t message {
-            1, 2, 3, 4, 5, 6, 7, 8, {1.1, 2.2, 3.3}, {4.4, 5.5, 6.6}
-    };
+
+    // Assemble message.
+    std::vector<float> a_buffer(32*32);
+    std::vector<float> b_buffer(32*32);
+    for (size_t i = 0; i < 32*32; i++) {
+        a_buffer[i] = (float)(i % 45);
+        b_buffer[i] = (float)(i % 38);
+    }
+    submatrices_message_t message;
+    message.a_col_start = 0;
+    message.a_col_end = 32;
+    message.a_row_start = 0;
+    message.a_row_end = 32;
+    message.b_col_start = 0;
+    message.b_col_end = 32;
+    message.b_row_start = 0;
+    message.b_row_end = 32;
+    std::copy(a_buffer.begin(), a_buffer.end(), message.a_buffer);
+    std::copy(b_buffer.begin(), b_buffer.end(), message.b_buffer);
 
     CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
@@ -169,9 +185,18 @@ static void test_create_submatrices_message_datatype()
         MPI_Status status{};
         CHECK(MPI_Recv(&received_message, 1, submatrices_message_dt, 0, (int)Tag::from_master, MPI_COMM_WORLD, &status));
 
-        _assert_msg(received_message == message, "Received and sent messages should equal");
+        // Compare buffers of message and received_message.
+        for (size_t i = 0; i < 32*32; i++) {
+            if (message.a_buffer[i] != received_message.a_buffer[i])
+                throw RuntimeError() << "message.a_buffer[i] != received_message.a_buffer[i] where i=" << i;
+            if (message.b_buffer[i] != received_message.b_buffer[i])
+                throw RuntimeError() << "message.b_buffer[i] != received_message.b_buffer[i] where i=" << i;
+        }
+        // Compare whole messages.
+        _assert_msg(received_message == message, "Received message is different than sent message.");
     }
 
+    CHECK(MPI_Type_free(&submatrices_message_dt));
     CHECK(MPI_Barrier(MPI_COMM_WORLD));
 }
 
@@ -198,6 +223,7 @@ static void test_create_result_message_datatype()
         _assert_msg(received_message == message, "Received and sent messages should equal");
     }
 
+    CHECK(MPI_Type_free(&result_message_dt));
     CHECK(MPI_Barrier(MPI_COMM_WORLD));
 }
 
