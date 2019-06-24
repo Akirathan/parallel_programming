@@ -37,18 +37,6 @@ static bool is_local()
     return std::strcmp(hostname, "mayfa-PC") == 0;
 }
 
-template <typename T>
-static void print_buffer(const T *buffer, size_t size)
-{
-    std::cout << "[";
-    for (size_t i = 0; i < size; i++) {
-        if (i != size - 1)
-            std::cout << buffer[i] << ", ";
-        else
-            std::cout << buffer[i] << "]";
-    }
-}
-
 static void test_flat_matrix()
 {
 }

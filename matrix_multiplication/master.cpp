@@ -34,7 +34,7 @@ Master::Master(int workers_count, char **argv) :
     create_submatrices_message_datatype(&mSubmatricesMessageDatatype);
     create_result_message_datatype(&mResultMessageDatatype);
 
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: A.rows=" << mMatricesSizes.a_rows
                   << ", A.cols=" << mMatricesSizes.a_cols
                   << ", B.rows=" << mMatricesSizes.b_rows
@@ -66,7 +66,7 @@ void Master::run()
 
 void Master::sendMatricesSizesToAllWorkers()
 {
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: Sending sizes of matrices to all workers." << std::endl;
 
     for (int worker_rank = 1; worker_rank <= mWorkersCount; worker_rank++) {
@@ -76,7 +76,7 @@ void Master::sendMatricesSizesToAllWorkers()
         sendToWorker(&mMatricesSizes.b_cols, 1, MPI_INT, worker_rank);
     }
 
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: Sizes of all matrices sent to all workers." << std::endl;
 }
 
@@ -115,7 +115,7 @@ void Master::sendAllBlocksAndReceiveResults()
 void Master::sendBlocksOfStripesAndReceiveResults(size_t res_row_start, size_t res_row_end, size_t res_col_start,
                                                   size_t res_col_end)
 {
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: Start sending blocks corresponding to result block with: res_row_start=" << res_row_start
                   << ", res_row_end=" << res_row_end << ", res_col_start=" << res_col_start
                   << ", res_col_end=" << res_col_end << std::endl;
@@ -147,7 +147,7 @@ void Master::sendBlocksOfStripesAndReceiveResults(size_t res_row_start, size_t r
 
 void Master::sendContinueFlagToWorker(int worker_rank, bool cont) const
 {
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: Sending continue flag (" << cont << ") to worker " << worker_rank << std::endl;
 
     sendToWorker(&cont, 1, MPI_CHAR, worker_rank);
@@ -184,7 +184,7 @@ void Master::sendSubmatrixToWorker(int worker_rank, int a_row_start, int a_row_e
     std::copy(rectangle_a.getBuffer(), rectangle_a.getBuffer() + rectangle_a.getTotalSize(), message.a_buffer);
     std::copy(rectangle_b.getBuffer(), rectangle_b.getBuffer() + rectangle_b.getTotalSize(), message.b_buffer);
 
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: Sending submatrices: " << message << " to worker: " << worker_rank << std::endl;
 
     sendToWorker(&message, 1, mSubmatricesMessageDatatype, mActualWorker);
@@ -192,7 +192,7 @@ void Master::sendSubmatrixToWorker(int worker_rank, int a_row_start, int a_row_e
 
 void Master::receiveResultsFromAllWorkers()
 {
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: Start receiving results from all workers..." << std::endl;
 
     for (int rank = 1; rank <= mWorkersCount; rank++)
@@ -206,7 +206,7 @@ void Master::receiveResultsFromWorker(int rank)
 
     FlatMatrix<float> received_matrix{message.result_buffer, message.get_result_rows_count(),
                                       message.get_result_cols_count()};
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master: From worker " << rank << " received result: " << received_matrix << std::endl;
 
     for (int result_row = message.result_row_start, received_matrix_row = 0;
@@ -234,13 +234,22 @@ void Master::receiveFromWorker(void *buf, int count, MPI_Datatype datatype, int 
 
     int element_count = 0;
     CHECK(MPI_Get_elements(&status, datatype, &element_count));
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Master::receiveFromWorker: MPI_Get_elements = " << element_count << std::endl;
 }
 
 void Master::writeResultMatrixToFile() const
 {
     std::ofstream output{mResultFilename, std::ios::binary};
+
+    if (is_debug_level(DebugLevel::Info)) {
+        std::cout << "Master: Writing matrix to filename" << mResultFilename << ", matrix:\n\t";
+        for (auto &&row : mResultMatrix) {
+            for (auto &&item : row)
+                std::cout << item << ", ";
+            std::cout << "\n\t";
+        }
+    }
 
     output.write((char *)&mMatricesSizes.result_cols, 4);
     output.write((char *)&mMatricesSizes.result_rows, 4);

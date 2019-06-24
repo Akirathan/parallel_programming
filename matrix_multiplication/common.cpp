@@ -27,7 +27,7 @@ void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datat
 
     int type_size = 0;
     CHECK(MPI_Type_size(*submatrices_message_datatype, &type_size));
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Size of submatrices_message type = " << type_size << std::endl;
 }
 
@@ -43,7 +43,7 @@ void create_result_message_datatype(MPI_Datatype *result_message_datatype)
 
     int type_size = 0;
     CHECK(MPI_Type_size(*result_message_datatype, &type_size));
-    if (DEBUG)
+    if (is_debug_level(DebugLevel::Info))
         std::cout << "Size of result_message type = " << type_size << std::endl;
 }
 
@@ -101,7 +101,20 @@ std::ostream &operator<<(std::ostream &os, const submatrices_message_t &message)
     os << "a_row_start: " << message.a_row_start << " a_row_end: " << message.a_row_end << " a_col_start: "
        << message.a_col_start << " a_col_end: " << message.a_col_end << " b_row_start: " << message.b_row_start
        << " b_row_end: " << message.b_row_end << " b_col_start: " << message.b_col_start << " b_col_end: "
-       << message.b_col_end << " a_buffer: " << message.a_buffer << " b_buffer: " << message.b_buffer;
+       << message.b_col_end;
+
+    os << " a_buffer: ";
+    if (is_debug_level(DebugLevel::Debug))
+        print_buffer(os, message.a_buffer, message.get_a_buffer_size());
+    else
+        os << message.a_buffer;
+
+    os << " b_buffer: ";
+    if (is_debug_level(DebugLevel::Debug))
+        print_buffer(os, message.b_buffer, message.get_b_buffer_size());
+    else
+        os << message.b_buffer;
+
     return os;
 }
 

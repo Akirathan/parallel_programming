@@ -45,8 +45,8 @@ matrices_sizes_t Worker::receiveMatricesSizes() const
     int b_cols = 0;
     receiveFromMaster(&b_cols, 1, MPI_INT);
 
-    if (DEBUG)
-        std::cout << "Worker(" << get_rank() << "): received from master: a_rows=" << a_rows << ", a_cols="
+    if (is_debug_level(DebugLevel::Info))
+        std::cout << "Worker(" << get_rank() << "): received matrix sizes from master: a_rows=" << a_rows << ", a_cols="
                   << a_cols << ", b_rows=" << b_rows << ", b_cols=" << b_cols << std::endl;
 
     return matrices_sizes_t {
@@ -68,6 +68,8 @@ submatrices_message_t Worker::receiveSubmatrices()
 {
     submatrices_message_t message{};
     receiveFromMaster(&message, 1, mSubmatricesMessageDatatype);
+    if (is_debug_level(DebugLevel::Info))
+        std::cout << "Worker (" << mRank << "): Received submatrices from master: " << message << std::endl;
     return message;
 }
 

@@ -10,10 +10,28 @@
 #include <ostream>
 #include "exception.hpp"
 
+enum class DebugLevel {
+    Debug,
+    Info
+};
+
+
+constexpr DebugLevel DEBUG = DebugLevel::Debug;
 constexpr int MASTER_RANK = 0;
-constexpr bool DEBUG = true;
 constexpr size_t ROWS_BLOCK_SIZE = 32;
 constexpr size_t COLS_BLOCK_SIZE = 32;
+
+inline bool is_debug_level(DebugLevel debug_level)
+{
+    if (DEBUG == DebugLevel::Info) {
+        if (debug_level == DebugLevel::Info)
+            return true;
+        else
+            return false;
+    }
+    else if (DEBUG == DebugLevel::Debug)
+        return true;
+}
 
 enum class Tag {
     from_master = 1,
@@ -93,6 +111,18 @@ inline int get_rank()
     int rank = 0;
     CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
     return rank;
+}
+
+template <typename T>
+inline void print_buffer(std::ostream &os, const T *buffer, size_t size)
+{
+    os << "[";
+    for (size_t i = 0; i < size; i++) {
+        if (i != size - 1)
+            os << buffer[i] << ", ";
+        else
+            os << buffer[i] << "]";
+    }
 }
 
 void create_submatrices_message_datatype(MPI_Datatype *submatrices_message_datatype);
