@@ -138,7 +138,8 @@ void Master::sendBlocksOfStripesAndReceiveResults(size_t res_row_start, size_t r
         sendSubmatrixToWorker(mActualWorker, a_row_start, a_row_end, a_col_start, a_col_end,
                               b_row_start, b_row_end, b_col_start, b_col_end);
 
-        if (mActualWorker >= mWorkersCount) {
+        mActualWorker++;
+        if (mActualWorker > mWorkersCount) {
             receiveResultsFromAllWorkers();
             mActualWorker = 1;
         }
