@@ -8,6 +8,7 @@
 #include <vector>
 #include <mpi.h>
 #include "exception.hpp"
+#include "stopwatch.hpp"
 #include "common.hpp"
 #include "MatrixReader.hpp"
 #include "master.hpp"
@@ -51,6 +52,7 @@ int main(int argc, char **argv)
     if (argc != 4)
         usage(argv);
 
+    Stopwatch stop_watch{true};
     CHECK(MPI_Init(&argc, &argv));
 
     int tasks_count = 0;
@@ -70,6 +72,12 @@ int main(int argc, char **argv)
     else {
         Worker worker{rank};
         worker.run();
+    }
+
+    if (rank == 0) {
+        stop_watch.stop();
+        std::cout << "Total run time: " << stop_watch.getSeconds() << " seconds, which is " << stop_watch.getMiliseconds()
+                  << " miliseconds." << std::endl;
     }
 
     CHECK(MPI_Finalize());

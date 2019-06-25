@@ -66,7 +66,8 @@ FILES = \
 	worker.cpp \
 	master.hpp \
 	master.cpp \
-	unit_tests.cpp
+	unit_tests.cpp \
+	stopwatch.hpp
 
 SSH_CMD = ssh parlab
 
