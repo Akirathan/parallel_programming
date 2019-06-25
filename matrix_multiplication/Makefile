@@ -4,6 +4,7 @@
 # Substitution references:
 #   $(VARIABLE:OLD_SUFFIX=NEW_SUFFIX)
 
+MAKE = make -j 4
 CPP = mpicxx
 CFLAGS = -Wall -g -std=c++17
 INCLUDE = .
@@ -31,7 +32,7 @@ EXECUTABLE = ./matrix_mult
 COMPILE_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $< -c -o $@
 LINK_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $^ -o $@
 
-.PHONY: all clear clean purge
+.PHONY: all clear clean purge run run_hmatrix run_unit_tests send_files
 
 all: $(EXECUTABLE)
 
@@ -70,23 +71,27 @@ FILES = \
 SSH_CMD = ssh parlab
 
 DATA_DIR = /mnt/home/_teaching/para/03-matrixmul-mpi/data
-DEBUG_DATA_DIR = ~/matrix_mult_para/data
+DEBUG_DATA_DIR = ~/matrix_mult_para/tests
 PROJECT_DIR = /mnt/home/s_bruchpa/matrix_mult_para
 
 PARTITION = small-hp
 RELEASE_N_PROCS = 256
 RELEASE_N_HOSTS = 8
 RELEASE_CORES = 2
-N_PROCS = 2
-N_HOSTS = 1
+N_PROCS = 256
+N_HOSTS = 8
 CORES = 2
-TIMEOUT = 20:00
+TIMEOUT = 5:00
 SRUN_CMD = srun -n $(N_PROCS) -N $(N_HOSTS) -p $(PARTITION) -c $(CORES) --distribution cyclic --time=$(TIMEOUT)
 UNIT_TEST_SRUN_CMD = srun -n 2 -N 1 -p $(PARTITION) -c 2 --distribution cyclic --time=$(TIMEOUT)
 
 DEBUG_MATRIX_A = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.a
 DEBUG_MATRIX_B = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.b
-DEBUG_OUT = $(DEBUG_DATA_DIR)/result-parallel-debug
+HMATRIX_A = /mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.a
+HMATRIX_B = /mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.b
+LMATRIX_A = /mnt/home/_teaching/para/03-matrixmul-mpi/data/lmatrix.a
+LMATRIX_B = /mnt/home/_teaching/para/03-matrixmul-mpi/data/lmatrix.b
+DEBUG_OUT = $(DEBUG_DATA_DIR)/result-parallel.bin
 ARGS = $(DEBUG_MATRIX_A) $(DEBUG_MATRIX_B) $(DEBUG_OUT)
 
 send_files:
@@ -95,11 +100,11 @@ send_files:
 
 compile: send_files
 	@echo "Compiling..."
-	@$(SSH_CMD) "cd $(PROJECT_DIR); srun make"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); srun $(MAKE)"
 
 compile_unit_tests: send_files
 	@echo "Compiling unit tests..."
-	@$(SSH_CMD) "cd $(PROJECT_DIR); srun make unit_tests"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); srun $(MAKE) unit_tests"
 
 run_unit_tests:
 	@echo "Running $(UNIT_TEST_SRUN_CMD) unit_tests"
@@ -113,6 +118,17 @@ test: test.py
 run:
 	@echo "Running $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
+
+HMATRIX_CMD = time $(SRUN_CMD) $(EXECUTABLE) $(HMATRIX_A) $(HMATRIX_B) $(DEBUG_OUT)
+run_hmatrix:
+	@echo "Running $(HMATRIX_CMD)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(HMATRIX_CMD)"
+
+LMATRIX_CMD = time $(SRUN_CMD) $(EXECUTABLE) $(LMATRIX_A) $(LMATRIX_B) $(DEBUG_OUT)
+run_lmatrix:
+	@echo "Running $(LMATRIX_CMD)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(LMATRIX_CMD)"
+
 
 # Cleaning Stuff
 
