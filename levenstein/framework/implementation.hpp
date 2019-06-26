@@ -111,7 +111,7 @@ private:
 	void computeDiagonal(size_t start_row, size_t start_col, size_t diag_idx)
     {
 	    size_t last_idx_in_diag = 0;
-#pragma omp parallel for shared(start_row, start_col, last_idx_in_diag)
+#pragma omp parallel for shared(last_idx_in_diag, mDiagonal) private(mIsInFirstHalfOfDiagonals, mInputArray1, mInputArray2)
 	    for (size_t start_idx_in_diag = 0; start_idx_in_diag < mDiagonalLen; start_idx_in_diag += chunk_size) {
 
 	        // If in last chunk.
