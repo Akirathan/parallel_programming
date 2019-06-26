@@ -19,8 +19,8 @@ enum class DebugLevel {
 
 constexpr DebugLevel DEBUG = DebugLevel::None;
 constexpr int MASTER_RANK = 0;
-constexpr size_t ROWS_BLOCK_SIZE = 32;
-constexpr size_t COLS_BLOCK_SIZE = 32;
+constexpr size_t ROWS_BLOCK_SIZE = 1024;
+constexpr size_t COLS_BLOCK_SIZE = 1024;
 
 inline bool is_debug_level(DebugLevel debug_level)
 {
