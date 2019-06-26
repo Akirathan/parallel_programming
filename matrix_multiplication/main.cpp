@@ -23,30 +23,6 @@ static void usage(char **argv)
     exit(1);
 }
 
-static void _main(int argc, char **argv)
-{
-    CHECK(MPI_Init(&argc, &argv));
-
-    if (get_rank() == 0) {
-        int arr[3] = {1, 2, 3};
-        CHECK(MPI_Send(arr, 3 * sizeof(int), MPI_INT, 1, (int)Tag::from_master, MPI_COMM_WORLD));
-    }
-    else if (get_rank() == 1) {
-        constexpr int MAX = 50;
-        int input_buff[MAX] = {};
-
-        MPI_Status status{};
-        MPI_Recv(input_buff, MAX, MPI_INT, 0, (int)Tag::from_master, MPI_COMM_WORLD, &status);
-
-        int received_count = 0;
-        MPI_Get_count(&status, MPI_INT, &received_count);
-
-        std::cout << "Real received number = " << received_count << std::endl;
-    }
-
-    CHECK(MPI_Finalize());
-}
-
 int main(int argc, char **argv)
 {
     if (argc != 4)
