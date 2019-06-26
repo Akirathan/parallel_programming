@@ -27,7 +27,7 @@ OBJECTS = $(SOURCES:.cpp=.o)
 UNIT_TEST_OBJECTS = $(UNIT_TEST_SOURCES:.cpp=.o)
 
 HEADERS = $(shell find . -name '*.hpp')
-EXECUTABLE = ./matrix_mult
+EXECUTABLE = ./du3
 
 COMPILE_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $< -c -o $@
 LINK_CMD = $(CPP) $(CFLAGS) $(addprefix -I,$(INCLUDE)) $(LDFLAGS) $(addprefix -L,$(LIBDIRS)) $(addprefix -l,$(LIBS)) $^ -o $@
