@@ -27,7 +27,6 @@ add_executable(${PROJECT_NAME}
         ${SOURCES}
         )
 
-add_executable(try try.cpp)
 add_executable(unit_tests unit_tests.cpp MatrixReader.cpp MatrixReader.hpp)
 
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
