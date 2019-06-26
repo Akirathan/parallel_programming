@@ -3,11 +3,13 @@
 
 #include <interface.hpp>
 #include <exception.hpp>
+#include <cassert>
 #include <vector>
 #include <iostream>
 #include <algorithm>
 #include <atomic>
 #include <omp.h>
+#include <thread>
 
 
 template<typename C = char, typename DIST = std::size_t, bool DEBUG = false>
@@ -28,19 +30,18 @@ public:
 	 */
 	void init(DIST len1, DIST len2) override
 	{
-	    mTotalColsCount = static_cast<size_t>(len1) + 1;
-	    mTotalRowsCount = static_cast<size_t>(len2) + 1;
+	    mTotalColsCount = std::max(len1, len2) + 1;
+	    mTotalRowsCount = std::min(len1, len2) + 1;
+	    assert(mTotalColsCount >= mTotalRowsCount);
 
-	    mRectangle.resize(omp_get_num_procs());
-	    mFlagsRectangle.resize(omp_get_num_procs());
-	    for (std::vector<DIST> &row : mRectangle) {
-	        row.resize(mTotalColsCount, 0);
-	    }
-	    for (std::vector<bool> &row : mFlagsRectangle) {
-	        row.resize(mTotalColsCount, 0);
-	    }
+	    // TODO: Poladit tuhle velikost.
+	    mBlockSize = omp_get_num_procs();
 
-        reinitializeRectangle();
+	    mLastItemsInCol.resize(mTotalColsCount);
+	    for (size_t i = 0; i < mTotalColsCount; ++i)
+	        mLastItemsInCol[i] = i;
+
+	    mActualIndexes.resize(mBlockSize);
 	}
 
 	/*
@@ -50,78 +51,89 @@ public:
 	 */
 	DIST compute(const std::vector<C> &str1, const std::vector<C> &str2) override
 	{
-        mInputArray1 = &str1;
-        mInputArray2 = &str2;
-        reinitializeRectangle();
+        if (str1.size() > str2.size()) {
+            mInputArray1 = &str1;
+            mInputArray2 = &str2;
+        }
+        else {
+	        mInputArray1 = &str2;
+	        mInputArray2 = &str1;
+	    }
+	    assert(mInputArray1->size() >= mInputArray2->size());
 
-        size_t upper_row_idx = 0;
+        size_t upper_row_idx = 1;
         for (;
-             upper_row_idx <= mTotalRowsCount - mRectangle.size();
-             upper_row_idx += mRectangle.size() - 1)
+             upper_row_idx <= mTotalRowsCount - mBlockSize;
+             upper_row_idx = std::min(upper_row_idx + mBlockSize, mTotalRowsCount))
         {
-            computeRectangle(upper_row_idx);
+            computeStripe(upper_row_idx);
             if (DEBUG)
-                logRectangle();
-            prepareRectangleForNextIteration();
+                logIteration();
+            prepareForNextIteration();
             if (DEBUG) {
                 std::cout << "After reinitialization:" << std::endl;
-                logRectangle();
+                logIteration();
             }
         }
 
         // Compute rest.
-        size_t last_rectangle_i = mRectangle.size() - 1;
-        size_t last_rectangle_j = mTotalColsCount - 1;
-        for (size_t total_i = upper_row_idx + 1, rectangle_i = 1;
-             total_i < mTotalRowsCount && rectangle_i < mRectangle.size();
-             ++total_i, ++rectangle_i)
-        {
-            for (size_t j = 1; j < mTotalColsCount; ++j) {
-                DIST upper = mRectangle[rectangle_i-1][j];
-                DIST left_upper = mRectangle[rectangle_i-1][j-1];
-                DIST left = mRectangle[rectangle_i][j-1];
-                DIST a = (*mInputArray1)[j-1];
-                DIST b = (*mInputArray2)[total_i-1];
+        for (size_t row = upper_row_idx + 1; row < mTotalRowsCount; ++row) {
+            DIST left_upper = row - 1;
+            DIST left = left_upper + 1;
+            DIST b = (*mInputArray2)[row - 1];
+
+            for (size_t col = 1; col < mTotalColsCount; ++col) {
+                DIST upper = mLastItemsInCol[col];
+                DIST a = (*mInputArray1)[col - 1];
                 DIST dist = computeDistance(upper, left_upper, left, a, b);
-                mRectangle[rectangle_i][j] = dist;
-                last_rectangle_i = rectangle_i;
-                last_rectangle_j = j;
+
+                mLastItemsInCol[col] = dist;
+
+                left_upper = upper;
+                left = dist;
             }
         }
 
         mInputArray1 = nullptr;
         mInputArray2 = nullptr;
 
-        return mRectangle[last_rectangle_i][last_rectangle_j];
+        return mLastItemsInCol[mTotalColsCount - 1];
 	}
 
 private:
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
-    std::vector<std::vector<DIST>> mRectangle;
-    std::vector<std::vector<bool>> mFlagsRectangle;
+    std::vector<DIST> mLastItemsInCol;
+    std::vector<size_t> mActualIndexes;
 	size_t mTotalRowsCount;
 	size_t mTotalColsCount;
+	size_t mBlockSize;
 
-	void computeRectangle(size_t upper_row_idx)
+	void computeStripe(size_t upper_row_idx)
     {
 
 #pragma omp parallel for shared(upper_row_idx)
 	    // Every thread computes one row.
-        for (size_t i = 1; i < mRectangle.size(); ++i) {
-            const size_t total_i = upper_row_idx + i;
-            for (size_t j = 1; j < mTotalColsCount; ++j) {
-                while (!mFlagsRectangle[i-1][j] || !mFlagsRectangle[i-1][j-1]) {
-                    // Active wait for another thread.
+        for (size_t thread_idx = 0; thread_idx < mBlockSize; ++thread_idx) {
+            const size_t total_i = upper_row_idx + thread_idx;
+            assert(total_i > 0);
+            // left_upper and left are part of first column.
+            DIST left_upper = total_i - 1;
+            DIST left = left_upper + 1;
+            DIST b = (*mInputArray2)[total_i - 1];
+            for (size_t col = 1; col < mTotalColsCount; ++col) {
+                while (thread_idx > 0 && mActualIndexes[thread_idx - 1] < col) {
+                    // TODO std::this_thread::yield();
                 }
-                DIST upper = mRectangle[i-1][j];
-                DIST left_upper = mRectangle[i-1][j-1];
-                DIST left = mRectangle[i][j-1];
-                DIST a = (*mInputArray1)[j-1];
-                DIST b = (*mInputArray2)[total_i-1];
+                DIST upper = mLastItemsInCol[col];
+                DIST a = (*mInputArray1)[col - 1];
                 DIST dist = computeDistance(upper, left_upper, left, a, b);
-                mRectangle[i][j] = dist;
-                mFlagsRectangle[i][j] = true;
+
+                mLastItemsInCol[col] = dist;
+                mActualIndexes[thread_idx] += 1;
+
+                left_upper = upper;
+                left = dist;
             }
         }
     }
@@ -134,62 +146,30 @@ private:
 		return std::min({first, second, third});
     }
 
-    void reinitializeRectangle()
+    void prepareForNextIteration()
     {
-        for (auto &&row : mFlagsRectangle) {
-            std::fill(row.begin(), row.end(), false);
-        }
-
-        // Initialize first row.
-        for (size_t i = 0; i < mRectangle[0].size(); ++i) {
-            mRectangle[0][i] = static_cast<DIST>(i);
-            mFlagsRectangle[0][i] = true;
-        }
-
-        // Initialize first column.
-        for (size_t j = 0; j < mRectangle.size(); ++j) {
-            mRectangle[j][0] = static_cast<DIST>(j);
-            mFlagsRectangle[j][0] = true;
-        }
+	    for (size_t &index : mActualIndexes)
+	        index = 0;
     }
 
-    void prepareRectangleForNextIteration()
+    void logIteration() const
     {
-        const size_t rectangle_rows = mRectangle.size();
-        const size_t rectangle_cols = mRectangle[0].size();
-
-        for (auto &&row : mFlagsRectangle)
-            for (auto &&item : row)
-                item = false;
-
-        // Copy last row to first row.
-        for (size_t j = 0; j < rectangle_cols; ++j) {
-            mRectangle[0][j] = mRectangle[rectangle_rows - 1][j];
-            mFlagsRectangle[0][j] = true;
-        }
-
-        // Reinitialize first column.
-        for (size_t i = 1; i < rectangle_rows; ++i) {
-            mRectangle[i][0] = mRectangle[0][0] + i;
-            mFlagsRectangle[i][0] = true;
-        }
+        printVector(std::cout, mLastItemsInCol, "Last items");
+        printVector(std::cout, mActualIndexes, "Actual indexes");
     }
 
-    void logRectangle() const
+    template <typename T>
+    void printVector(std::ostream &output, const std::vector<T> &vector, const std::string &vector_name) const
     {
-        std::cout << "Rectangle:" << std::endl;
-        for (size_t i = 0; i < mRectangle.size(); ++i) {
-            for (size_t j = 0; j < mRectangle[0].size(); ++j)
-                std::cout << mRectangle[i][j] << " ";
-            std::cout << std::endl;
-        }
-
-        std::cout << "Flags rectangle:" << std::endl;
-        for (size_t i = 0; i < mFlagsRectangle.size(); ++i) {
-            for (size_t j = 0; j < mFlagsRectangle[0].size(); ++j)
-                std::cout << mFlagsRectangle[i][j] << " ";
-            std::cout << std::endl;
-        }
+	    output << vector_name << ": [";
+	    const T &last_item = vector[vector.size() - 1];
+	    for (auto &&item : vector) {
+            if (item == last_item)
+	            output << item;
+            else
+                output << item << ", ";
+	    }
+	    output << "]" << std::endl;
     }
 
 };
