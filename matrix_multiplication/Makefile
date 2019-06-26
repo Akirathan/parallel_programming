@@ -75,6 +75,8 @@ DATA_DIR = /mnt/home/_teaching/para/03-matrixmul-mpi/data
 DEBUG_DATA_DIR = ~/matrix_mult_para/tests
 PROJECT_DIR = /mnt/home/s_bruchpa/matrix_mult_para
 
+COMPARATOR_EXE = $(PROJECT_DIR)/exec/comparator
+
 PARTITION = small-hp
 RELEASE_N_PROCS = 256
 RELEASE_N_HOSTS = 8
@@ -90,8 +92,10 @@ DEBUG_MATRIX_A = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.a
 DEBUG_MATRIX_B = $(DEBUG_DATA_DIR)/matrix-r5-c5-s42.b
 HMATRIX_A = /mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.a
 HMATRIX_B = /mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.b
+HMATRIX_R = /mnt/home/_teaching/para/03-matrixmul-mpi/data/hmatrix.r
 LMATRIX_A = /mnt/home/_teaching/para/03-matrixmul-mpi/data/lmatrix.a
 LMATRIX_B = /mnt/home/_teaching/para/03-matrixmul-mpi/data/lmatrix.b
+LMATRIX_R = /mnt/home/_teaching/para/03-matrixmul-mpi/data/lmatrix.r
 DEBUG_OUT = $(DEBUG_DATA_DIR)/result-parallel.bin
 ARGS = $(DEBUG_MATRIX_A) $(DEBUG_MATRIX_B) $(DEBUG_OUT)
 
@@ -120,15 +124,15 @@ run:
 	@echo "Running $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
 	@$(SSH_CMD) "cd $(PROJECT_DIR); $(SRUN_CMD) $(EXECUTABLE) $(ARGS)"
 
-HMATRIX_CMD = time $(SRUN_CMD) $(EXECUTABLE) $(HMATRIX_A) $(HMATRIX_B) $(DEBUG_OUT)
+HMATRIX_CMD = $(SRUN_CMD) $(EXECUTABLE) $(HMATRIX_A) $(HMATRIX_B) $(DEBUG_OUT)
 run_hmatrix:
 	@echo "Running $(HMATRIX_CMD)"
-	@$(SSH_CMD) "cd $(PROJECT_DIR); $(HMATRIX_CMD)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(HMATRIX_CMD); echo Comparing...; srun $(COMPARATOR_EXE) $(DEBUG_OUT) $(HMATRIX_R)"
 
-LMATRIX_CMD = time $(SRUN_CMD) $(EXECUTABLE) $(LMATRIX_A) $(LMATRIX_B) $(DEBUG_OUT)
+LMATRIX_CMD = $(SRUN_CMD) $(EXECUTABLE) $(LMATRIX_A) $(LMATRIX_B) $(DEBUG_OUT)
 run_lmatrix:
 	@echo "Running $(LMATRIX_CMD)"
-	@$(SSH_CMD) "cd $(PROJECT_DIR); $(LMATRIX_CMD)"
+	@$(SSH_CMD) "cd $(PROJECT_DIR); $(LMATRIX_CMD); echo Comparing...; srun $(COMPARATOR_EXE) $(DEBUG_OUT) $(LMATRIX_R)"
 
 
 # Cleaning Stuff
