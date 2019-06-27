@@ -110,7 +110,7 @@ private:
 	void computeStripe(size_t upper_row_idx)
     {
 
-#pragma omp parallel for shared(upper_row_idx)
+#pragma omp parallel for shared(mLastItemsInCol, mActualIndexes, mTotalColsCount) num_threads(mBlockSize)
 	    // Every thread computes one row.
         for (size_t thread_idx = 0; thread_idx < mBlockSize; ++thread_idx) {
             const size_t total_i = upper_row_idx + thread_idx;
