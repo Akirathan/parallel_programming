@@ -120,7 +120,7 @@ public:
 	}
 
 private:
-    static constexpr size_t mBlockSize = 32;
+    static constexpr size_t mBlockSize = 64;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
     std::vector<DIST> mLastItemsInCol;
