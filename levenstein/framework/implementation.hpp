@@ -149,8 +149,7 @@ private:
 
     void prepareForNextIteration()
     {
-	    for (size_t &index : mActualIndexes)
-	        index = 0;
+	    std::fill(mActualIndexes.begin(), mActualIndexes.end(), 0);
     }
 
     void logIteration() const
