@@ -12,6 +12,27 @@
 #include <thread>
 
 
+struct Index {
+    size_t idx;
+    char _filling[64];
+
+    bool operator==(const Index &rhs) const
+    {
+        return idx == rhs.idx;
+    }
+
+    bool operator!=(const Index &rhs) const
+    {
+        return !(rhs == *this);
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const Index &index)
+    {
+        os << "idx: " << index.idx;
+        return os;
+    }
+};
+
 template<typename C = char, typename DIST = std::size_t, bool DEBUG = false>
 class EditDistance : public IEditDistance<C, DIST, DEBUG>
 {
@@ -103,7 +124,7 @@ private:
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
     std::vector<DIST> mLastItemsInCol;
-    std::vector<size_t> mActualIndexes;
+    std::vector<Index> mActualIndexes;
 	size_t mTotalRowsCount;
 	size_t mTotalColsCount;
 
@@ -120,15 +141,15 @@ private:
             DIST left = left_upper + 1;
             DIST b = (*mInputArray2)[total_i - 1];
             for (size_t col = 1; col < mTotalColsCount; ++col) {
-                while (thread_idx > 0 && mActualIndexes[thread_idx - 1] < col) {
-                    // TODO std::this_thread::yield();
+                while (thread_idx > 0 && mActualIndexes[thread_idx - 1].idx < col) {
+                    std::this_thread::yield();
                 }
-                DIST upper = mLastItemsInCol[col];
                 DIST a = (*mInputArray1)[col - 1];
+                DIST upper = mLastItemsInCol[col];
                 DIST dist = computeDistance(upper, left_upper, left, a, b);
 
                 mLastItemsInCol[col] = dist;
-                mActualIndexes[thread_idx] += 1;
+                mActualIndexes[thread_idx].idx = col;
 
                 left_upper = upper;
                 left = dist;
@@ -146,7 +167,8 @@ private:
 
     void prepareForNextIteration()
     {
-	    std::fill(mActualIndexes.begin(), mActualIndexes.end(), 0);
+	    for (Index &index : mActualIndexes)
+	        index.idx = 0;
     }
 
     void logIteration() const
