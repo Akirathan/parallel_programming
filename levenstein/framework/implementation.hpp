@@ -63,7 +63,8 @@ public:
 
         size_t upper_row_idx = 1;
         for (;
-             upper_row_idx <= mTotalRowsCount - mBlockSize;
+             // (mTotalRowsCount - mBlockSize) may be negative, thatswhy the cast.
+             static_cast<int>(upper_row_idx) <= static_cast<int>(mTotalRowsCount - mBlockSize);
              upper_row_idx = std::min(upper_row_idx + mBlockSize, mTotalRowsCount))
         {
             computeStripe(upper_row_idx);
