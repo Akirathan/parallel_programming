@@ -34,9 +34,6 @@ public:
 	    mTotalRowsCount = std::min(len1, len2) + 1;
 	    assert(mTotalColsCount >= mTotalRowsCount);
 
-	    // TODO: Poladit tuhle velikost.
-	    mBlockSize = omp_get_num_procs();
-
 	    mLastItemsInCol.resize(mTotalColsCount);
 	    for (size_t i = 0; i < mTotalColsCount; ++i)
 	        mLastItemsInCol[i] = i;
@@ -102,13 +99,13 @@ public:
 	}
 
 private:
+    static constexpr size_t mBlockSize = 32;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
     std::vector<DIST> mLastItemsInCol;
     std::vector<size_t> mActualIndexes;
 	size_t mTotalRowsCount;
 	size_t mTotalColsCount;
-	size_t mBlockSize;
 
 	void computeStripe(size_t upper_row_idx)
     {
