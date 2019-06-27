@@ -6,6 +6,7 @@
 #include "../serial/implementation.hpp"
 #include "../serial/dummy_levenstein.hpp"
 #include "implementation.hpp"
+#include "dalibor_implementation.hpp"
 #include "internal/exception.hpp"
 
 
@@ -88,6 +89,18 @@ static void simple_one_char_same_test()
     compare_both(array_1, array_2);
 }
 
+static void dalibor_simple_test()
+{
+    auto vectors = get_random_vectors(40, 40);
+    DaliborEditDistance<char, size_t, false> impl;
+    SerialEditDistance serial_impl;
+    impl.init(40, 40);
+    serial_impl.init(40, 40);
+    size_t res = impl.compute(vectors.first, vectors.second);
+    size_t serial_res = serial_impl.compute(vectors.first, vectors.second);
+    assert(res == serial_res);
+}
+
 static void different_sizes_test()
 {
     std::cout << "Running different_sizes_test..." << std::endl;
@@ -165,6 +178,7 @@ static void bednarek_random_tests()
 static void run_all_tests()
 {
     std::cout << "Running all tests..." << std::endl;
+    dalibor_simple_test();
     simple_test();
     simple_one_char_same_test();
     different_sizes_test();
