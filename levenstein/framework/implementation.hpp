@@ -56,9 +56,10 @@ public:
 	    assert(mTotalColsCount >= mTotalRowsCount);
 
 	    mThreadCount = 32; // TODO
+	    if (mThreadCount > mTotalRowsCount)
+	        mThreadCount = mTotalRowsCount / 2;
+
 	    mBlockSize = mTotalRowsCount / mThreadCount;
-	    if (mBlockSize == 0)
-	        mBlockSize = 2;
 
 	    mLastItemsInCol.resize(mTotalColsCount);
 	    for (size_t i = 0; i < mTotalColsCount; ++i)
@@ -116,7 +117,7 @@ private:
 
 	void computeInParallel()
     {
-        //#pragma omp parallel for shared(mLastItemsInCol, mActualIndexes, mTotalColsCount) num_threads(mThreadCount)
+        #pragma omp parallel for shared(mLastItemsInCol, mActualIndexes) num_threads(mThreadCount)
 	    // Every thread computes block_size rows.
         for (size_t thread_idx = 0; thread_idx < mThreadCount; ++thread_idx) {
             size_t block_row_begin = thread_idx * mBlockSize;
@@ -160,9 +161,6 @@ private:
 
                 left_upper = last_upper_for_col;
             }
-
-            if (block_row_end == mTotalRowsCount)
-                break;
         }
     }
 
