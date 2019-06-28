@@ -55,11 +55,26 @@ public:
 	    mTotalRowsCount = std::min(len1, len2) + 1;
 	    assert(mTotalColsCount >= mTotalRowsCount);
 
+	    mThreadCount = 32; // TODO
+	    mBlockSize = mTotalRowsCount / mThreadCount;
+	    if (mBlockSize == 0)
+	        mBlockSize = 2;
+
 	    mLastItemsInCol.resize(mTotalColsCount);
 	    for (size_t i = 0; i < mTotalColsCount; ++i)
 	        mLastItemsInCol[i] = i;
 
-	    mActualIndexes.resize(mBlockSize);
+	    mThreadLefts.resize(mThreadCount);
+	    size_t counter = 0;
+	    for (size_t thread_idx = 0; thread_idx < mThreadCount; ++thread_idx) {
+            mThreadLefts[thread_idx].resize(mBlockSize);
+            for (size_t row = 0; row < mBlockSize; ++row) {
+                mThreadLefts[thread_idx][row] = counter;
+                counter++;
+            }
+        }
+
+	    mActualIndexes.resize(mThreadCount);
 	}
 
 	/*
@@ -79,39 +94,7 @@ public:
 	    }
 	    assert(mInputArray1->size() >= mInputArray2->size());
 
-        size_t upper_row_idx = 1;
-        for (;
-             // (mTotalRowsCount - mBlockSize) may be negative, thatswhy the cast.
-             static_cast<int>(upper_row_idx) <= static_cast<int>(mTotalRowsCount - mBlockSize);
-             upper_row_idx = std::min(upper_row_idx + mBlockSize, mTotalRowsCount))
-        {
-            computeStripe(upper_row_idx);
-            if (DEBUG)
-                logIteration();
-            prepareForNextIteration();
-            if (DEBUG) {
-                std::cout << "After reinitialization:" << std::endl;
-                logIteration();
-            }
-        }
-
-        // Compute rest.
-        for (size_t row = upper_row_idx + 1; row < mTotalRowsCount; ++row) {
-            DIST left_upper = row - 1;
-            DIST left = left_upper + 1;
-            DIST b = (*mInputArray2)[row - 1];
-
-            for (size_t col = 1; col < mTotalColsCount; ++col) {
-                DIST upper = mLastItemsInCol[col];
-                DIST a = (*mInputArray1)[col - 1];
-                DIST dist = computeDistance(upper, left_upper, left, a, b);
-
-                mLastItemsInCol[col] = dist;
-
-                left_upper = upper;
-                left = dist;
-            }
-        }
+        computeInParallel();
 
         mInputArray1 = nullptr;
         mInputArray2 = nullptr;
@@ -120,40 +103,64 @@ public:
 	}
 
 private:
-    static constexpr size_t mBlockSize = 64;
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
     std::vector<DIST> mLastItemsInCol;
     std::vector<Index> mActualIndexes;
+    /// mThreadLefts[t][r] ... value of left for a thread t on row r.
+    std::vector<std::vector<DIST>> mThreadLefts;
+    size_t mThreadCount;
+    size_t mBlockSize;
 	size_t mTotalRowsCount;
 	size_t mTotalColsCount;
 
-	void computeStripe(size_t upper_row_idx)
+	void computeInParallel()
     {
+        //#pragma omp parallel for shared(mLastItemsInCol, mActualIndexes, mTotalColsCount) num_threads(mThreadCount)
+	    // Every thread computes block_size rows.
+        for (size_t thread_idx = 0; thread_idx < mThreadCount; ++thread_idx) {
+            size_t block_row_begin = thread_idx * mBlockSize;
+            size_t block_row_end = std::min((thread_idx + 1) * mBlockSize, mTotalRowsCount);
+            if (DEBUG)
+                std::cout << "Thread (" << thread_idx << "): block_row_begin=" << block_row_begin
+                          << " block_row_end=" << block_row_end << std::endl;
 
-#pragma omp parallel for shared(mLastItemsInCol, mActualIndexes, mTotalColsCount) num_threads(mBlockSize)
-	    // Every thread computes one row.
-        for (size_t thread_idx = 0; thread_idx < mBlockSize; ++thread_idx) {
-            const size_t total_i = upper_row_idx + thread_idx;
-            assert(total_i > 0);
             // left_upper and left are part of first column.
-            DIST left_upper = total_i - 1;
-            DIST left = left_upper + 1;
-            DIST b = (*mInputArray2)[total_i - 1];
+            DIST left_upper = block_row_begin > 0 ? block_row_begin - 1 : 0;
             for (size_t col = 1; col < mTotalColsCount; ++col) {
                 while (thread_idx > 0 && mActualIndexes[thread_idx - 1].idx < col) {
                     std::this_thread::yield();
                 }
-                DIST a = (*mInputArray1)[col - 1];
+
                 DIST upper = mLastItemsInCol[col];
-                DIST dist = computeDistance(upper, left_upper, left, a, b);
+                DIST last_upper_for_col = upper;
+                const DIST a = (*mInputArray1)[col - 1];
+                DIST dist = 0;
+                for (size_t total_row = block_row_begin; total_row < block_row_end; ++total_row) {
+                    if (total_row == 0)
+                        continue;
+
+                    DIST b = (*mInputArray2)[total_row - 1];
+                    size_t thread_lefts_row = total_row % mBlockSize;
+                    DIST left = mThreadLefts[thread_idx][thread_lefts_row];
+
+                    if (DEBUG)
+                        logOneCompute(total_row, col, upper, left_upper, left, a, b);
+                    dist = computeDistance(upper, left_upper, left, a, b);
+
+                    left_upper = left;
+                    upper = dist;
+                    mThreadLefts[thread_idx][thread_lefts_row] = dist;
+                }
 
                 mLastItemsInCol[col] = dist;
                 mActualIndexes[thread_idx].idx = col;
 
-                left_upper = upper;
-                left = dist;
+                left_upper = last_upper_for_col;
             }
+
+            if (block_row_end == mTotalRowsCount)
+                break;
         }
     }
 
@@ -165,16 +172,11 @@ private:
 		return std::min({first, second, third});
     }
 
-    void prepareForNextIteration()
+    void logOneCompute(size_t row, size_t col, DIST upper, DIST left_upper, DIST left, DIST a, DIST b) const
     {
-	    for (Index &index : mActualIndexes)
-	        index.idx = 0;
-    }
-
-    void logIteration() const
-    {
-        printVector(std::cout, mLastItemsInCol, "Last items");
-        printVector(std::cout, mActualIndexes, "Actual indexes");
+        std::cout << "Computing element at row=" << row << ", col=" << col << " with: upper=" << upper
+                  << " left_upper=" << left_upper << " left=" << left << " a=" << (char)a << " b=" << (char)b
+                  << std::endl;
     }
 
     template <typename T>
@@ -190,7 +192,6 @@ private:
 	    }
 	    output << "]" << std::endl;
     }
-
 };
 
 
