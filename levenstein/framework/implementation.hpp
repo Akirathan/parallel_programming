@@ -136,12 +136,14 @@ private:
                 DIST last_upper_for_col = upper;
                 const DIST a = (*mInputArray1)[col - 1];
                 DIST dist = 0;
-                for (size_t total_row = block_row_begin; total_row < block_row_end; ++total_row) {
+                for (size_t total_row = block_row_begin, thread_lefts_row = 0;
+                     total_row < block_row_end;
+                     ++total_row, ++thread_lefts_row)
+                {
                     if (total_row == 0)
                         continue;
 
                     DIST b = (*mInputArray2)[total_row - 1];
-                    size_t thread_lefts_row = total_row % mBlockSize;
                     DIST left = mThreadLefts[thread_idx][thread_lefts_row];
 
                     if (DEBUG)
