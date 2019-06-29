@@ -186,20 +186,6 @@ private:
                   << " left_upper=" << left_upper << " left=" << left << " a=" << (char)a << " b=" << (char)b
                   << std::endl;
     }
-
-    template <typename T>
-    void printVector(std::ostream &output, const std::vector<T> &vector, const std::string &vector_name) const
-    {
-	    output << vector_name << ": [";
-	    const T &last_item = vector[vector.size() - 1];
-	    for (auto &&item : vector) {
-            if (item == last_item)
-	            output << item;
-            else
-                output << item << ", ";
-	    }
-	    output << "]" << std::endl;
-    }
 };
 
 
