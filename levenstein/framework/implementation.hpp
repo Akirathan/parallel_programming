@@ -10,6 +10,7 @@
 #include <atomic>
 #include <omp.h>
 #include <thread>
+#include <cmath>
 
 
 struct Index {
@@ -55,11 +56,16 @@ public:
 	    mTotalRowsCount = std::min(len1, len2) + 1;
 	    assert(mTotalColsCount >= mTotalRowsCount);
 
-	    mThreadCount = 32; // TODO
+	    if (len1 >= 32 * 1024 && len2 >= 32 * 1024)
+	        mThreadCount = 64;
+	    else
+            mThreadCount = 32;
+
+	    // For deubg - for small sizes of strings.
 	    if (mThreadCount > mTotalRowsCount)
 	        mThreadCount = mTotalRowsCount / 2;
 
-	    mBlockSize = mTotalRowsCount / mThreadCount;
+	    mBlockSize = std::ceil((double)mTotalRowsCount / (double)mThreadCount);
 
 	    mLastItemsInCol.resize(mTotalColsCount);
 	    for (size_t i = 0; i < mTotalColsCount; ++i)
