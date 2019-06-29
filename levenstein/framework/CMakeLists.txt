@@ -14,6 +14,7 @@ include_directories(internal)
 
 set(SOURCES
         implementation.hpp
+        dalibor_implementation.hpp
         levenshtein.cpp
         internal/exception.hpp
         internal/interface.hpp
