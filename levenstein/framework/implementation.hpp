@@ -13,27 +13,6 @@
 #include <cmath>
 
 
-struct Index {
-    size_t idx;
-    char _filling[64];
-
-    bool operator==(const Index &rhs) const
-    {
-        return idx == rhs.idx;
-    }
-
-    bool operator!=(const Index &rhs) const
-    {
-        return !(rhs == *this);
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, const Index &index)
-    {
-        os << "idx: " << index.idx;
-        return os;
-    }
-};
-
 template<typename C = char, typename DIST = std::size_t, bool DEBUG = false>
 class EditDistance : public IEditDistance<C, DIST, DEBUG>
 {
@@ -117,7 +96,7 @@ private:
     const std::vector<C> *mInputArray1;
     const std::vector<C> *mInputArray2;
     std::vector<DIST> mLastItemsInCol;
-    std::vector<Index> mActualIndexes;
+    std::vector<size_t> mActualIndexes;
     /// mThreadLefts[t][r] ... value of left for a thread t on row r.
     std::vector<std::vector<DIST>> mThreadLefts;
     size_t mThreadCount;
@@ -125,10 +104,13 @@ private:
 	size_t mTotalRowsCount;
 	size_t mTotalColsCount;
 
+	/**
+	 * Every thread computes one stripe - ie. mBlockSize rows. We set mBlockSize and mThreadCount so every thread
+	 * computes just one stripe.
+	 */
 	void computeInParallel()
     {
         #pragma omp parallel for shared(mLastItemsInCol, mActualIndexes) num_threads(mThreadCount)
-	    // Every thread computes block_size rows.
         for (size_t thread_idx = 0; thread_idx < mThreadCount; ++thread_idx) {
             size_t block_row_begin = thread_idx * mBlockSize;
             size_t block_row_end = std::min((thread_idx + 1) * mBlockSize, mTotalRowsCount);
@@ -144,7 +126,7 @@ private:
 
             DIST left_upper = block_row_begin > 0 ? block_row_begin - 1 : 0;
             for (size_t col = 1; col < mTotalColsCount; ++col) {
-                while (thread_idx > 0 && mActualIndexes[thread_idx - 1].idx < col)
+                while (thread_idx > 0 && mActualIndexes[thread_idx - 1] < col)
                     std::this_thread::yield();
 
                 DIST upper = mLastItemsInCol[col];
@@ -171,7 +153,7 @@ private:
                 }
 
                 mLastItemsInCol[col] = dist;
-                mActualIndexes[thread_idx].idx = col;
+                mActualIndexes[thread_idx] = col;
 
                 left_upper = last_upper_for_col;
             }
