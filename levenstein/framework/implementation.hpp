@@ -82,6 +82,10 @@ public:
         }
 
 	    mActualIndexes.resize(mThreadCount);
+
+	    if (DEBUG)
+	        std::cout << "After init: mThreadCount=" << mThreadCount << " mBlockSize=" << mBlockSize
+	                  << " mTotalRowsCount=" << mTotalRowsCount << " mTotalColsCount=" << mTotalColsCount << std::endl;
 	}
 
 	/*
@@ -132,12 +136,10 @@ private:
                 std::cout << "Thread (" << thread_idx << "): block_row_begin=" << block_row_begin
                           << " block_row_end=" << block_row_end << std::endl;
 
-            // left_upper and left are part of first column.
             DIST left_upper = block_row_begin > 0 ? block_row_begin - 1 : 0;
             for (size_t col = 1; col < mTotalColsCount; ++col) {
-                while (thread_idx > 0 && mActualIndexes[thread_idx - 1].idx < col) {
+                while (thread_idx > 0 && mActualIndexes[thread_idx - 1].idx < col)
                     std::this_thread::yield();
-                }
 
                 DIST upper = mLastItemsInCol[col];
                 DIST last_upper_for_col = upper;
@@ -153,7 +155,7 @@ private:
                     DIST b = (*mInputArray2)[total_row - 1];
                     DIST left = mThreadLefts[thread_idx][thread_lefts_row];
 
-                    if (DEBUG)
+                    if (DEBUG && mTotalColsCount <= 32 && mTotalRowsCount <= 32)
                         logOneCompute(total_row, col, upper, left_upper, left, a, b);
                     dist = computeDistance(upper, left_upper, left, a, b);
 
