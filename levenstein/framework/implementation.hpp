@@ -132,6 +132,12 @@ private:
         for (size_t thread_idx = 0; thread_idx < mThreadCount; ++thread_idx) {
             size_t block_row_begin = thread_idx * mBlockSize;
             size_t block_row_end = std::min((thread_idx + 1) * mBlockSize, mTotalRowsCount);
+
+            // This is fix for some small strings. For large enough strings, mThreadCount and mBlockSize should be
+            // set reasonable enough so we do not fall in this condition.
+            if (block_row_begin >= block_row_end)
+                continue;
+
             if (DEBUG)
                 std::cout << "Thread (" << thread_idx << "): block_row_begin=" << block_row_begin
                           << " block_row_end=" << block_row_end << std::endl;
